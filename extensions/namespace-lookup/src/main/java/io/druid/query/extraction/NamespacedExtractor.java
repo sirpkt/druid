@@ -30,29 +30,37 @@ import com.metamx.common.StringUtils;
 
 import javax.validation.constraints.NotNull;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * Namespaced extraction is a special case of DimExtractionFn where the actual extractor is pulled from a map of known implementations.
  * In the event that an unknown namespace is passed, a simple reflective function is returned instead.
  */
 @JsonTypeName("namespace")
-public class NamespacedExtractor implements LookupExtractor
+public class NamespacedExtractor extends LookupExtractor
 {
   private static final byte CACHE_TYPE_ID = 0x05;
 
   private final String namespace;
   private final Function<String, String> extractionFunction;
+  private final Function<String, List<String>> reverseExtractionFunction;
 
   @JsonCreator
   public NamespacedExtractor(
       @NotNull @JacksonInject @Named("dimExtractionNamespace")
       final Function<String, Function<String, String>> namespaces,
+      @NotNull @JacksonInject @Named("reverseDimExtractionNamespace")
+      final Function<String, Function<String, List<String>>> reverseNamespaces,
       @NotNull @JsonProperty(value = "namespace", required = true)
       final String namespace
   )
   {
     this.namespace = Preconditions.checkNotNull(namespace, "namespace");
     this.extractionFunction = Preconditions.checkNotNull(namespaces.apply(namespace), "no namespace found");
+    this.reverseExtractionFunction = Preconditions.checkNotNull(
+        reverseNamespaces.apply(namespace),
+        "can not found reverse extraction function"
+    );
   }
 
   @JsonProperty("namespace")
@@ -74,4 +82,9 @@ public class NamespacedExtractor implements LookupExtractor
     return extractionFunction.apply(value);
   }
 
+  @Override
+  public List<String> unapply(@NotNull String value)
+  {
+    return reverseExtractionFunction.apply(value);
+  }
 }

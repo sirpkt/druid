@@ -56,6 +56,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
@@ -80,15 +81,18 @@ public class NamespaceExtractionCacheManagerExecutorsTest
   private NamespaceExtractionCacheManager manager;
   private File tmpFile;
   private final ConcurrentMap<String, Function<String, String>> fnCache = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Function<String, List<String>>> reverseFnCache = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, Object> cacheUpdateAlerts = new ConcurrentHashMap<>();
 
   private final AtomicLong numRuns = new AtomicLong(0L);
 
   @Before
-  public void setUp() throws IOException
+  public void setUp() throws Exception
   {
     final Path tmpDir = temporaryFolder.newFolder().toPath();
     lifecycle = new Lifecycle();
+    // Lifecycle stop is used to shut down executors. Start does nothing, so it's ok to call it here.
+    lifecycle.start();
     final URIExtractionNamespaceFunctionFactory factory = new URIExtractionNamespaceFunctionFactory(
         ImmutableMap.<String, SearchableVersionedDataFinder>of("file", new LocalFileTimestampVersionFinder())
     )
@@ -114,7 +118,7 @@ public class NamespaceExtractionCacheManagerExecutorsTest
       }
     };
     manager = new OnHeapNamespaceExtractionCacheManager(
-        lifecycle, fnCache, new NoopServiceEmitter(),
+        lifecycle, fnCache, reverseFnCache, new NoopServiceEmitter(),
         ImmutableMap.<Class<? extends ExtractionNamespace>, ExtractionNamespaceFunctionFactory<?>>of(
             URIExtractionNamespace.class,
             factory

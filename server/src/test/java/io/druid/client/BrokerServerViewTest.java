@@ -319,8 +319,7 @@ public class BrokerServerViewTest extends CuratorTestBase
     baseView = new BatchServerInventoryView(
         zkPathsConfig,
         curator,
-        jsonMapper,
-        Predicates.<DataSegment>alwaysTrue()
+        jsonMapper
     )
     {
       @Override
@@ -372,15 +371,29 @@ public class BrokerServerViewTest extends CuratorTestBase
 
   private void setupZNodeForServer(DruidServer server) throws Exception
   {
+    final String zNodePathAnnounce = ZKPaths.makePath(announcementsPath, server.getHost());
+    final String zNodePathSegment = ZKPaths.makePath(inventoryPath, server.getHost());
+
+    /*
+     * Explicitly check whether the zNodes we are about to create exist or not,
+     * if exist, delete them to make sure we have a clean state on zookeeper.
+     * Address issue: https://github.com/druid-io/druid/issues/1512
+     */
+    if (curator.checkExists().forPath(zNodePathAnnounce) != null) {
+      curator.delete().guaranteed().forPath(zNodePathAnnounce);
+    }
+    if (curator.checkExists().forPath(zNodePathSegment) != null) {
+      curator.delete().guaranteed().forPath(zNodePathSegment);
+    }
     curator.create()
            .creatingParentsIfNeeded()
            .forPath(
-               ZKPaths.makePath(announcementsPath, server.getHost()),
+               zNodePathAnnounce,
                jsonMapper.writeValueAsBytes(server.getMetadata())
            );
     curator.create()
            .creatingParentsIfNeeded()
-           .forPath(ZKPaths.makePath(inventoryPath, server.getHost()));
+           .forPath(zNodePathSegment);
   }
 
   private DataSegment dataSegmentWithIntervalAndVersion(String intervalStr, String version)
