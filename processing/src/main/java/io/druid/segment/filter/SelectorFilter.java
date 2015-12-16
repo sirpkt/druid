@@ -21,6 +21,7 @@ package io.druid.segment.filter;
 
 import com.google.common.base.Strings;
 import com.metamx.collections.bitmap.ImmutableBitmap;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.query.filter.BitmapIndexSelector;
 import io.druid.query.filter.Filter;
 import io.druid.query.filter.ValueMatcher;
@@ -33,12 +34,12 @@ import io.druid.segment.data.IndexedInts;
  */
 public class SelectorFilter implements Filter
 {
-  private final String dimension;
-  private final String value;
+  private final DimensionSchema dimension;
+  private final Comparable value;
 
   public SelectorFilter(
-      String dimension,
-      String value
+      DimensionSchema dimension,
+      Comparable value
   )
   {
     this.dimension = dimension;
@@ -64,9 +65,9 @@ public class SelectorFilter implements Filter
 
     // Missing columns match a null or empty string value and don't match anything else
     if (dimensionSelector == null) {
-      return new BooleanValueMatcher(Strings.isNullOrEmpty(value));
+      return new BooleanValueMatcher(Strings.isNullOrEmpty(String.valueOf(value)));
     } else {
-      final int valueId = dimensionSelector.lookupId(value);
+      final int valueId = dimensionSelector.lookupId(String.valueOf(value));
       return new ValueMatcher()
       {
         @Override

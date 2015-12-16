@@ -27,6 +27,7 @@ import com.metamx.common.guava.Accumulator;
 import io.druid.collections.StupidPool;
 import io.druid.data.input.MapBasedInputRow;
 import io.druid.data.input.MapBasedRow;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.granularity.QueryGranularity;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.dimension.DimensionSpec;
@@ -66,14 +67,14 @@ public class GroupByQueryHelper
           }
         }
     );
-    final List<String> dimensions = Lists.transform(
+    final List<DimensionSchema> dimensions = Lists.transform(
         query.getDimensions(),
-        new Function<DimensionSpec, String>()
+        new Function<DimensionSpec, DimensionSchema>()
         {
           @Override
-          public String apply(DimensionSpec input)
+          public DimensionSchema apply(DimensionSpec input)
           {
-            return input.getOutputName();
+            return input.getDimension();
           }
         }
     );

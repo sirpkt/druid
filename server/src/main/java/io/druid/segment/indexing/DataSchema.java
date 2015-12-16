@@ -24,10 +24,13 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.metamx.common.IAE;
 import com.metamx.common.logger.Logger;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.data.input.impl.DimensionsSpec;
 import io.druid.data.input.impl.InputRowParser;
 import io.druid.data.input.impl.TimestampSpec;
@@ -35,6 +38,7 @@ import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.segment.indexing.granularity.GranularitySpec;
 import io.druid.segment.indexing.granularity.UniformGranularitySpec;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
@@ -102,7 +106,17 @@ public class DataSchema
 
     final Set<String> dimensionExclusions = Sets.newHashSet();
     for (AggregatorFactory aggregator : aggregators) {
-      dimensionExclusions.addAll(aggregator.requiredFields());
+      dimensionExclusions.addAll(
+          Lists.transform(
+              aggregator.requiredFields(),
+              new Function<DimensionSchema, String>() {
+                @Override
+                public String apply(DimensionSchema dimensionSchema) {
+                  return dimensionSchema.getName();
+                }
+              }
+          )
+      );
       dimensionExclusions.add(aggregator.getName());
     }
 
@@ -113,7 +127,8 @@ public class DataSchema
       // exclude timestamp from dimensions by default, unless explicitly included in the list of dimensions
       if (timestampSpec != null) {
         final String timestampColumn = timestampSpec.getTimestampColumn();
-        if (!(dimensionsSpec.hasCustomDimensions() && dimensionsSpec.getDimensions().contains(timestampColumn))) {
+        final DimensionSchema timestampSchema = new DimensionSchema(timestampColumn, "String");
+        if (!(dimensionsSpec.hasCustomDimensions() && dimensionsSpec.getDimensions().contains(timestampSchema))) {
           dimensionExclusions.add(timestampColumn);
         }
       }
@@ -122,7 +137,17 @@ public class DataSchema
         for (AggregatorFactory aggregator : aggregators) {
           metSet.add(aggregator.getName());
         }
-        final Set<String> dimSet = Sets.newHashSet(dimensionsSpec.getDimensions());
+        final Set<String> dimSet = Sets.newHashSet(
+            Lists.transform(
+                dimensionsSpec.getDimensions(),
+                new Function<DimensionSchema, String>() {
+                  @Override
+                  public String apply(DimensionSchema dimensionSchema) {
+                    return dimensionSchema.getName();
+                  }
+                }
+            )
+        );
         final Set<String> overlap = Sets.intersection(metSet, dimSet);
         if (!overlap.isEmpty()) {
           throw new IAE(

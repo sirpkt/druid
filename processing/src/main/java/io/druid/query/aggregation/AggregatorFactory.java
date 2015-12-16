@@ -19,6 +19,7 @@
 
 package io.druid.query.aggregation;
 
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.segment.ColumnSelectorFactory;
 
 import java.util.Comparator;
@@ -93,7 +94,7 @@ public interface AggregatorFactory
 
   public String getName();
 
-  public List<String> requiredFields();
+  public List<DimensionSchema> requiredFields();
 
   public byte[] getCacheKey();
 

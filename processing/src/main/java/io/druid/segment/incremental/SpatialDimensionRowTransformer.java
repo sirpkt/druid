@@ -24,14 +24,12 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.metamx.common.ISE;
 import com.metamx.common.parsers.ParseException;
 import io.druid.data.input.InputRow;
 import io.druid.data.input.Row;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.data.input.impl.SpatialDimensionSchema;
 import org.joda.time.DateTime;
 
@@ -79,18 +77,18 @@ public class SpatialDimensionRowTransformer implements Function<InputRow, InputR
   @Override
   public InputRow apply(final InputRow row)
   {
-    final Map<String, List<String>> spatialLookup = Maps.newHashMap();
+    final Map<DimensionSchema, List<Comparable>> spatialLookup = Maps.newHashMap();
 
     // remove all spatial dimensions
-    final List<String> finalDims = Lists.newArrayList(
+    final List<DimensionSchema> finalDims = Lists.newArrayList(
         Iterables.filter(
             row.getDimensions(),
-            new Predicate<String>()
+            new Predicate<DimensionSchema>()
             {
               @Override
-              public boolean apply(String input)
+              public boolean apply(DimensionSchema input)
               {
-                return !spatialDimensionMap.containsKey(input) && !spatialPartialDimNames.contains(input);
+                return !spatialDimensionMap.containsKey(input.getName()) && !spatialPartialDimNames.contains(input.getName());
               }
             }
         )
@@ -99,7 +97,7 @@ public class SpatialDimensionRowTransformer implements Function<InputRow, InputR
     InputRow retVal = new InputRow()
     {
       @Override
-      public List<String> getDimensions()
+      public List<DimensionSchema> getDimensions()
       {
         return finalDims;
       }
@@ -117,9 +115,9 @@ public class SpatialDimensionRowTransformer implements Function<InputRow, InputR
       }
 
       @Override
-      public List<String> getDimension(String dimension)
+      public List<Comparable> getDimension(DimensionSchema dimension)
       {
-        List<String> retVal = spatialLookup.get(dimension);
+        List<Comparable> retVal = spatialLookup.get(dimension);
         return (retVal == null) ? row.getDimension(dimension) : retVal;
       }
 
@@ -167,28 +165,32 @@ public class SpatialDimensionRowTransformer implements Function<InputRow, InputR
     for (Map.Entry<String, SpatialDimensionSchema> entry : spatialDimensionMap.entrySet()) {
       final String spatialDimName = entry.getKey();
       final SpatialDimensionSchema spatialDim = entry.getValue();
+      // TODO: fix the type of spatial dimension
+      final DimensionSchema spatialDimSchema = new DimensionSchema(spatialDimName, "String");
 
-      List<String> dimVals = row.getDimension(spatialDimName);
+      List<Comparable> dimVals = row.getDimension(spatialDimSchema);
       if (dimVals != null && !dimVals.isEmpty()) {
         if (dimVals.size() != 1) {
           throw new ISE("Spatial dimension value must be in an array!");
         }
-        if (isJoinedSpatialDimValValid(dimVals.get(0))) {
-          spatialLookup.put(spatialDimName, dimVals);
-          finalDims.add(spatialDimName);
+        if (isJoinedSpatialDimValValid((String)dimVals.get(0))) {
+          spatialLookup.put(spatialDimSchema, dimVals);
+          finalDims.add(spatialDimSchema);
         }
       } else {
-        List<String> spatialDimVals = Lists.newArrayList();
+        List<Comparable> spatialDimVals = Lists.newArrayList();
         for (String dim : spatialDim.getDims()) {
-          List<String> partialDimVals = row.getDimension(dim);
+          // TODO: fix the type of spatial dimension
+          final DimensionSchema dimSchema = new DimensionSchema(dim, "String");
+          List<Comparable> partialDimVals = row.getDimension(dimSchema);
           if (isSpatialDimValsValid(partialDimVals)) {
             spatialDimVals.addAll(partialDimVals);
           }
         }
 
         if (spatialDimVals.size() == spatialDim.getDims().size()) {
-          spatialLookup.put(spatialDimName, Arrays.asList(JOINER.join(spatialDimVals)));
-          finalDims.add(spatialDimName);
+          spatialLookup.put(spatialDimSchema, Arrays.asList((Comparable)JOINER.join(spatialDimVals)));
+          finalDims.add(spatialDimSchema);
         }
       }
     }
@@ -196,13 +198,13 @@ public class SpatialDimensionRowTransformer implements Function<InputRow, InputR
     return retVal;
   }
 
-  private boolean isSpatialDimValsValid(List<String> dimVals)
+  private boolean isSpatialDimValsValid(List<Comparable> dimVals)
   {
     if (dimVals == null || dimVals.isEmpty()) {
       return false;
     }
-    for (String dimVal : dimVals) {
-      if (tryParseFloat(dimVal) == null) {
+    for (Comparable dimVal : dimVals) {
+      if (tryParseFloat((String)dimVal) == null) {
         return false;
       }
     }

@@ -27,16 +27,16 @@ import io.druid.segment.data.GenericIndexed;
 
 /**
  */
-public class BitmapIndexColumnPartSupplier implements Supplier<BitmapIndex>
+public class BitmapIndexColumnPartSupplier<T> implements Supplier<BitmapIndex>
 {
   private final BitmapFactory bitmapFactory;
   private final GenericIndexed<ImmutableBitmap> bitmaps;
-  private final GenericIndexed<String> dictionary;
+  private final GenericIndexed<T> dictionary;
 
   public BitmapIndexColumnPartSupplier(
       BitmapFactory bitmapFactory,
       GenericIndexed<ImmutableBitmap> bitmaps,
-      GenericIndexed<String> dictionary
+      GenericIndexed<T> dictionary
   )
   {
     this.bitmapFactory = bitmapFactory;
@@ -45,9 +45,9 @@ public class BitmapIndexColumnPartSupplier implements Supplier<BitmapIndex>
   }
 
   @Override
-  public BitmapIndex get()
+  public BitmapIndex<T> get()
   {
-    return new BitmapIndex()
+    return new BitmapIndex<T>()
     {
       @Override
       public int getCardinality()
@@ -56,7 +56,7 @@ public class BitmapIndexColumnPartSupplier implements Supplier<BitmapIndex>
       }
 
       @Override
-      public String getValue(int index)
+      public T getValue(int index)
       {
         return dictionary.get(index);
       }
@@ -74,7 +74,7 @@ public class BitmapIndexColumnPartSupplier implements Supplier<BitmapIndex>
       }
 
       @Override
-      public ImmutableBitmap getBitmap(String value)
+      public ImmutableBitmap getBitmap(T value)
       {
         final int index = dictionary.indexOf(value);
 

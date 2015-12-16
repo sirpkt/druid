@@ -117,7 +117,9 @@
             <dependency>
                 <groupId>io.druid</groupId>
                 <artifactId>druid-api</artifactId>
-                <version>${druid.api.version}</version>
+                <version>0.3.14</version>
+                <scope>system</scope>
+                <systemPath>/Users/ktpark/bug_fix/druid-api/target/druid-api-0.3.14-SNAPSHOT.jar</systemPath>
             </dependency>
 
             <!-- Compile Scope -->

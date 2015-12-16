@@ -19,6 +19,7 @@
 
 package io.druid.segment;
 
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.query.extraction.ExtractionFn;
 
 import javax.annotation.Nullable;
@@ -28,7 +29,7 @@ import javax.annotation.Nullable;
  */
 public interface ColumnSelectorFactory
 {
-  public DimensionSelector makeDimensionSelector(String dimensionName, @Nullable ExtractionFn extractionFn);
+  public DimensionSelector makeDimensionSelector(DimensionSchema dimensionName, @Nullable ExtractionFn extractionFn);
   public FloatColumnSelector makeFloatColumnSelector(String columnName);
   public LongColumnSelector makeLongColumnSelector(String columnName);
   public ObjectColumnSelector makeObjectColumnSelector(String columnName);

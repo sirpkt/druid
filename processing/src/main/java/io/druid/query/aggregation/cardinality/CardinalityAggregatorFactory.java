@@ -27,6 +27,7 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.metamx.common.StringUtils;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.query.aggregation.Aggregator;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.Aggregators;
@@ -56,18 +57,18 @@ public class CardinalityAggregatorFactory implements AggregatorFactory
   private static final byte CACHE_TYPE_ID = (byte) 0x8;
 
   private final String name;
-  private final List<String> fieldNames;
+  private final List<DimensionSchema> fields;
   private final boolean byRow;
 
   @JsonCreator
   public CardinalityAggregatorFactory(
       @JsonProperty("name") String name,
-      @JsonProperty("fieldNames") final List<String> fieldNames,
+      @JsonProperty("fieldNames") final List<DimensionSchema> fields,
       @JsonProperty("byRow") final boolean byRow
   )
   {
     this.name = name;
-    this.fieldNames = fieldNames;
+    this.fields = fields;
     this.byRow = byRow;
   }
 
@@ -101,11 +102,11 @@ public class CardinalityAggregatorFactory implements AggregatorFactory
     return Lists.newArrayList(
         Iterables.filter(
             Iterables.transform(
-                fieldNames, new Function<String, DimensionSelector>()
+                fields, new Function<DimensionSchema, DimensionSelector>()
             {
               @Nullable
               @Override
-              public DimensionSelector apply(@Nullable String input)
+              public DimensionSelector apply(@Nullable DimensionSchema input)
               {
                 return columnFactory.makeDimensionSelector(input, null);
               }
@@ -150,13 +151,13 @@ public class CardinalityAggregatorFactory implements AggregatorFactory
   public List<AggregatorFactory> getRequiredColumns()
   {
     return Lists.transform(
-        fieldNames,
-        new Function<String, AggregatorFactory>()
+        fields,
+        new Function<DimensionSchema, AggregatorFactory>()
         {
           @Override
-          public AggregatorFactory apply(String input)
+          public AggregatorFactory apply(DimensionSchema input)
           {
-            return new CardinalityAggregatorFactory(input, fieldNames, byRow);
+            return new CardinalityAggregatorFactory(input.getName(), fields, byRow);
           }
         }
     );
@@ -192,15 +193,23 @@ public class CardinalityAggregatorFactory implements AggregatorFactory
   }
 
   @Override
-  public List<String> requiredFields()
+  public List<DimensionSchema> requiredFields()
   {
-    return fieldNames;
+    return fields;
   }
 
   @JsonProperty
   public List<String> getFieldNames()
   {
-    return fieldNames;
+    return Lists.transform(
+        fields,
+        new Function<DimensionSchema, String>() {
+          @Override
+          public String apply(DimensionSchema dimensionSchema) {
+            return dimensionSchema.getName();
+          }
+        }
+    );
   }
 
   @JsonProperty
@@ -212,7 +221,7 @@ public class CardinalityAggregatorFactory implements AggregatorFactory
   @Override
   public byte[] getCacheKey()
   {
-    byte[] fieldNameBytes = StringUtils.toUtf8(Joiner.on("\u0001").join(fieldNames));
+    byte[] fieldNameBytes = StringUtils.toUtf8(Joiner.on("\u0001").join(fields));
 
     return ByteBuffer.allocate(2 + fieldNameBytes.length)
                      .put(CACHE_TYPE_ID)
@@ -254,7 +263,7 @@ public class CardinalityAggregatorFactory implements AggregatorFactory
     if (byRow != that.byRow) {
       return false;
     }
-    if (fieldNames != null ? !fieldNames.equals(that.fieldNames) : that.fieldNames != null) {
+    if (fields != null ? !fields.equals(that.fields) : that.fields != null) {
       return false;
     }
     if (name != null ? !name.equals(that.name) : that.name != null) {
@@ -268,7 +277,7 @@ public class CardinalityAggregatorFactory implements AggregatorFactory
   public int hashCode()
   {
     int result = name != null ? name.hashCode() : 0;
-    result = 31 * result + (fieldNames != null ? fieldNames.hashCode() : 0);
+    result = 31 * result + (fields != null ? fields.hashCode() : 0);
     result = 31 * result + (byRow ? 1 : 0);
     return result;
   }
@@ -278,7 +287,7 @@ public class CardinalityAggregatorFactory implements AggregatorFactory
   {
     return "CardinalityAggregatorFactory{" +
            "name='" + name + '\'' +
-           ", fieldNames='" + fieldNames + '\'' +
+           ", fieldNames='" + fields + '\'' +
            '}';
   }
 }

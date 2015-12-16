@@ -19,10 +19,12 @@
 
 package io.druid.segment.data;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Ordering;
 import com.google.common.primitives.Ints;
 import com.metamx.common.IAE;
 import com.metamx.common.guava.CloseQuietly;
+import io.druid.data.input.impl.DimensionSchema;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -348,6 +350,66 @@ public class GenericIndexed<T> implements Indexed<T>
     public int compare(String o1, String o2)
     {
       return Ordering.natural().nullsFirst().compare(o1, o2);
+    }
+  };
+
+  public static final ObjectStrategy<Float> FLOAT_STRATEGY = new CacheableObjectStrategy<Float>()
+  {
+    @Override
+    public Class<? extends Float> getClazz()
+    {
+      return Float.class;
+    }
+
+    @Override
+    public Float fromByteBuffer(final ByteBuffer buffer, final int numBytes)
+    {
+      return buffer.getFloat();
+    }
+
+    @Override
+    public byte[] toBytes(Float val)
+    {
+      if (val == null) {
+        return new byte[]{};
+      }
+      return ByteBuffer.allocate(4).putFloat(val).array();
+    }
+
+    @Override
+    public int compare(Float o1, Float o2)
+    {
+      return Ordering.natural().nullsFirst().compare(o1, o2);
+    }
+  };
+
+  public static final ObjectStrategy<DimensionSchema> DIMENSION_SCHEMA_STRATEGY = new CacheableObjectStrategy<DimensionSchema>()
+  {
+    @Override
+    public Class<? extends DimensionSchema> getClazz()
+    {
+      return DimensionSchema.class;
+    }
+
+    @Override
+    public DimensionSchema fromByteBuffer(final ByteBuffer buffer, final int numBytes)
+    {
+      return DimensionSchema.fromString(com.metamx.common.StringUtils.fromUtf8(buffer, numBytes));
+    }
+
+    @Override
+    public byte[] toBytes(DimensionSchema val)
+    {
+      if (val == null) {
+        return new byte[]{};
+      }
+      return com.metamx.common.StringUtils.toUtf8(val.toString());
+    }
+
+    @Override
+    public int compare(DimensionSchema o1, DimensionSchema o2)
+    {
+      return Ordering.natural().nullsFirst().compare(o1.toString(), o2.toString());
     }
   };
 }

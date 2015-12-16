@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.metamx.common.ISE;
 import io.druid.data.input.MapBasedInputRow;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.granularity.QueryGranularity;
 import io.druid.query.TestQueryRunners;
 import io.druid.query.aggregation.AggregatorFactory;
@@ -101,14 +102,15 @@ public class IncrementalIndexTest
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy", "joe"),
+            Lists.newArrayList(new DimensionSchema("billy", "String"), new DimensionSchema("joe", "String")),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy", "joe", "joe"),
+            Lists.newArrayList(new DimensionSchema("billy", "String"), new DimensionSchema("joe", "String"),
+                new DimensionSchema("joe", "String")),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );
@@ -121,7 +123,8 @@ public class IncrementalIndexTest
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy", "joe", "joe"),
+            Lists.newArrayList(new DimensionSchema("billy", "String"), new DimensionSchema("joe", "String"),
+                new DimensionSchema("joe", "String")),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );
@@ -134,14 +137,14 @@ public class IncrementalIndexTest
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy", "joe"),
+            Lists.newArrayList(new DimensionSchema("billy", "String"), new DimensionSchema("joe", "String")),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy", "joe"),
+            Lists.newArrayList(new DimensionSchema("billy", "String"), new DimensionSchema("joe", "String")),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );

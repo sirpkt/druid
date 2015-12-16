@@ -31,6 +31,7 @@ import com.metamx.common.ISE;
 import com.metamx.common.guava.Sequence;
 import com.metamx.common.guava.Sequences;
 import io.druid.data.input.Row;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.granularity.QueryGranularity;
 import io.druid.query.BaseQuery;
 import io.druid.query.DataSource;
@@ -390,17 +391,17 @@ public class GroupByQuery extends BaseQuery<Row>
       return this;
     }
 
-    public Builder addOrderByColumn(String dimension)
+    public Builder addOrderByColumn(DimensionSchema dimension)
     {
       return addOrderByColumn(dimension, (OrderByColumnSpec.Direction) null);
     }
 
-    public Builder addOrderByColumn(String dimension, String direction)
+    public Builder addOrderByColumn(DimensionSchema dimension, String direction)
     {
       return addOrderByColumn(dimension, OrderByColumnSpec.determineDirection(direction));
     }
 
-    public Builder addOrderByColumn(String dimension, OrderByColumnSpec.Direction direction)
+    public Builder addOrderByColumn(DimensionSchema dimension, OrderByColumnSpec.Direction direction)
     {
       return addOrderByColumn(new OrderByColumnSpec(dimension, direction));
     }
@@ -451,12 +452,12 @@ public class GroupByQuery extends BaseQuery<Row>
       return this;
     }
 
-    public Builder addDimension(String column)
+    public Builder addDimension(DimensionSchema column)
     {
-      return addDimension(column, column);
+      return addDimension(column, column.getName());
     }
 
-    public Builder addDimension(String column, String outputName)
+    public Builder addDimension(DimensionSchema column, String outputName)
     {
       return addDimension(new DefaultDimensionSpec(column, outputName));
     }

@@ -20,6 +20,7 @@ package io.druid.segment.filter;
 
 import com.metamx.collections.bitmap.ImmutableBitmap;
 import com.metamx.collections.spatial.search.Bound;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.query.filter.BitmapIndexSelector;
 import io.druid.query.filter.Filter;
 import io.druid.query.filter.ValueMatcher;
@@ -30,11 +31,11 @@ import io.druid.segment.ColumnSelectorFactory;
  */
 public class SpatialFilter implements Filter
 {
-  private final String dimension;
+  private final DimensionSchema dimension;
   private final Bound bound;
 
   public SpatialFilter(
-      String dimension,
+      DimensionSchema dimension,
       Bound bound
   )
   {

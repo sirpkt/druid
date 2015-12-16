@@ -26,6 +26,7 @@ import com.metamx.common.ISE;
 import io.druid.collections.ResourceHolder;
 import io.druid.collections.StupidPool;
 import io.druid.data.input.InputRow;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.granularity.QueryGranularity;
 import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.BufferAggregator;
@@ -40,6 +41,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -153,7 +155,7 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
   }
 
   @Override
-  protected DimDim makeDimDim(String dimension)
+  protected DimDim makeDimDim(DimensionSchema dimension)
   {
     return new OffheapDimDim(dimension);
   }
@@ -316,13 +318,13 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
         out.writeLong(timeAndDim.getTimestamp());
         out.writeInt(timeAndDim.getDims().length);
         int index = 0;
-        for (String[] dims : timeAndDim.getDims()) {
+        for (Comparable[] dims : timeAndDim.getDims()) {
           if (dims == null) {
             out.write(-1);
           } else {
             DimDim dimDim = incrementalIndex.getDimDim(index);
             out.writeInt(dims.length);
-            for (String value : dims) {
+            for (Comparable value : dims) {
               out.writeInt(dimDim.getId(value));
             }
           }
@@ -337,12 +339,12 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
       Object[] ret = new Object[size];
       for (int i = start; i < end; i++) {
         final long timeStamp = in.readLong();
-        final String[][] dims = new String[in.readInt()][];
+        final Comparable[][] dims = new Comparable[in.readInt()][];
         for (int k = 0; k < dims.length; k++) {
           int len = in.readInt();
           if (len != -1) {
             DimDim dimDim = incrementalIndex.getDimDim(k);
-            String[] col = new String[len];
+            Comparable[] col = new Comparable[len];
             for (int l = 0; l < col.length; l++) {
               col[l] = dimDim.get(dimDim.getValue(in.readInt()));
             }
@@ -370,26 +372,29 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
     }
   }
 
-  private class OffheapDimDim implements DimDim
+  private class OffheapDimDim<T extends Comparable<T>> implements DimDim<T>
   {
-    private final Map<String, Integer> falseIds;
-    private final Map<Integer, String> falseIdsReverse;
-    private final WeakHashMap<String, WeakReference<String>> cache = new WeakHashMap();
+    private final Map<T, Integer> falseIds;
+    private final Map<Integer, T> falseIdsReverse;
+    private final WeakHashMap<T, WeakReference<T>> cache = new WeakHashMap();
 
-    private volatile String[] sortedVals = null;
+    private volatile T[] sortedVals = null;
     // size on MapDB is slow so maintain a count here
     private volatile int size = 0;
 
-    public OffheapDimDim(String dimension)
+    private final Class<T> clazz;
+
+    public OffheapDimDim(DimensionSchema dimension)
     {
-      falseIds = db.createHashMap(dimension)
-                   .keySerializer(Serializer.STRING)
+      falseIds = db.createHashMap(dimension.toString())
+                   .keySerializer(Serializer.JAVA)
                    .valueSerializer(Serializer.INTEGER)
                    .make();
-      falseIdsReverse = db.createHashMap(dimension + "_inverse")
+      falseIdsReverse = db.createHashMap(dimension.toString() + "_inverse")
                           .keySerializer(Serializer.INTEGER)
-                          .valueSerializer(Serializer.STRING)
+                          .valueSerializer(Serializer.JAVA)
                           .make();
+      this.clazz = dimension.getType().getClazz();
     }
 
     /**
@@ -397,30 +402,30 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
      *
      * @see io.druid.segment.incremental.IncrementalIndexStorageAdapter.EntryHolderValueMatcherFactory#makeValueMatcher(String, String)
      */
-    public String get(String str)
+    public T get(T val)
     {
-      final WeakReference<String> cached = cache.get(str);
+      final WeakReference<T> cached = cache.get(val);
       if (cached != null) {
-        final String value = cached.get();
+        final T value = cached.get();
         if (value != null) {
           return value;
         }
       }
-      cache.put(str, new WeakReference(str));
-      return str;
+      cache.put(val, new WeakReference(val));
+      return val;
     }
 
-    public int getId(String value)
+    public int getId(T value)
     {
       return falseIds.get(value);
     }
 
-    public String getValue(int id)
+    public T getValue(int id)
     {
       return falseIdsReverse.get(id);
     }
 
-    public boolean contains(String value)
+    public boolean contains(T value)
     {
       return falseIds.containsKey(value);
     }
@@ -430,7 +435,7 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
       return size;
     }
 
-    public synchronized int add(String value)
+    public synchronized int add(T value)
     {
       int id = size++;
       falseIds.put(value, id);
@@ -438,13 +443,13 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
       return id;
     }
 
-    public int getSortedId(String value)
+    public int getSortedId(T value)
     {
       assertSorted();
       return Arrays.binarySearch(sortedVals, value);
     }
 
-    public String getSortedValue(int index)
+    public T getSortedValue(int index)
     {
       assertSorted();
       return sortedVals[index];
@@ -453,10 +458,10 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
     public void sort()
     {
       if (sortedVals == null) {
-        sortedVals = new String[falseIds.size()];
+        sortedVals = (T[]) Array.newInstance(clazz, falseIds.size());
 
         int index = 0;
-        for (String value : falseIds.keySet()) {
+        for (T value : falseIds.keySet()) {
           sortedVals[index++] = value;
         }
         Arrays.sort(sortedVals);
@@ -470,7 +475,7 @@ public class OffheapIncrementalIndex extends IncrementalIndex<BufferAggregator>
       }
     }
 
-    public boolean compareCannonicalValues(String s1, String s2)
+    public boolean compareCannonicalValues(T s1, T s2)
     {
       return s1.equals(s2);
     }

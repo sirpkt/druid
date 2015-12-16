@@ -28,6 +28,7 @@ import com.google.common.collect.Lists;
 import com.metamx.common.IAE;
 import com.metamx.common.ISE;
 import com.metamx.common.StringUtils;
+import io.druid.data.input.impl.DimensionSchema;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
@@ -59,7 +60,7 @@ public class OrderByColumnSpec
     stupidEnumMap = bob.build();
   }
 
-  private final String dimension;
+  private final DimensionSchema dimension;
   private final Direction direction;
 
   @JsonCreator
@@ -68,32 +69,35 @@ public class OrderByColumnSpec
     Preconditions.checkNotNull(obj, "Cannot build an OrderByColumnSpec from a null object.");
 
     if (obj instanceof String) {
-      return new OrderByColumnSpec(obj.toString(), null);
-    } else if (obj instanceof Map) {
+      return new OrderByColumnSpec(new DimensionSchema(obj.toString(), "String"), null);
+    } else if (obj instanceof  DimensionSchema) {
+      return new OrderByColumnSpec((DimensionSchema)obj, null);
+    }
+    else if (obj instanceof Map) {
       final Map map = (Map) obj;
 
       final String dimension = map.get("dimension").toString();
       final Direction direction = determineDirection(map.get("direction"));
 
-      return new OrderByColumnSpec(dimension, direction);
+      return new OrderByColumnSpec(new DimensionSchema(dimension, "String"), direction);
     } else {
       throw new ISE("Cannot build an OrderByColumnSpec from a %s", obj.getClass());
     }
   }
 
-  public static OrderByColumnSpec asc(String dimension)
+  public static OrderByColumnSpec asc(DimensionSchema dimension)
   {
     return new OrderByColumnSpec(dimension, Direction.ASCENDING);
   }
 
-  public static List<OrderByColumnSpec> ascending(String... dimension)
+  public static List<OrderByColumnSpec> ascending(DimensionSchema... dimension)
   {
     return Lists.transform(
         Arrays.asList(dimension),
-        new Function<String, OrderByColumnSpec>()
+        new Function<DimensionSchema, OrderByColumnSpec>()
         {
           @Override
-          public OrderByColumnSpec apply(@Nullable String input)
+          public OrderByColumnSpec apply(@Nullable DimensionSchema input)
           {
             return asc(input);
           }
@@ -101,19 +105,19 @@ public class OrderByColumnSpec
     );
   }
 
-  public static OrderByColumnSpec desc(String dimension)
+  public static OrderByColumnSpec desc(DimensionSchema dimension)
   {
     return new OrderByColumnSpec(dimension, Direction.DESCENDING);
   }
 
-  public static List<OrderByColumnSpec> descending(String... dimension)
+  public static List<OrderByColumnSpec> descending(DimensionSchema... dimension)
   {
     return Lists.transform(
         Arrays.asList(dimension),
-        new Function<String, OrderByColumnSpec>()
+        new Function<DimensionSchema, OrderByColumnSpec>()
         {
           @Override
-          public OrderByColumnSpec apply(@Nullable String input)
+          public OrderByColumnSpec apply(@Nullable DimensionSchema input)
           {
             return desc(input);
           }
@@ -122,7 +126,7 @@ public class OrderByColumnSpec
   }
 
   public OrderByColumnSpec(
-      String dimension,
+      DimensionSchema dimension,
       Direction direction
   )
   {
@@ -131,7 +135,7 @@ public class OrderByColumnSpec
   }
 
   @JsonProperty
-  public String getDimension()
+  public DimensionSchema getDimension()
   {
     return dimension;
   }
@@ -183,7 +187,7 @@ public class OrderByColumnSpec
 
   public byte[] getCacheKey()
   {
-    final byte[] dimensionBytes = StringUtils.toUtf8(dimension);
+    final byte[] dimensionBytes = StringUtils.toUtf8(dimension.toString());
     final byte[] directionBytes = StringUtils.toUtf8(direction.name());
 
     return ByteBuffer.allocate(dimensionBytes.length + directionBytes.length)

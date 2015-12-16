@@ -22,15 +22,16 @@ package io.druid.query.filter;
 import com.metamx.collections.bitmap.BitmapFactory;
 import com.metamx.collections.bitmap.ImmutableBitmap;
 import com.metamx.collections.spatial.ImmutableRTree;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.segment.data.Indexed;
 
 /**
  */
 public interface BitmapIndexSelector
 {
-  public Indexed<String> getDimensionValues(String dimension);
+  public Indexed<Object> getDimensionValues(DimensionSchema dimension);
   public int getNumRows();
   public BitmapFactory getBitmapFactory();
-  public ImmutableBitmap getBitmapIndex(String dimension, String value);
-  public ImmutableRTree getSpatialIndex(String dimension);
+  public ImmutableBitmap getBitmapIndex(DimensionSchema dimension, Object value);
+  public ImmutableRTree getSpatialIndex(DimensionSchema dimension);
 }

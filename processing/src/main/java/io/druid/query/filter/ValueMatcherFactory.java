@@ -21,12 +21,13 @@ package io.druid.query.filter;
 
 import com.google.common.base.Predicate;
 import com.metamx.collections.spatial.search.Bound;
+import io.druid.data.input.impl.DimensionSchema;
 
 /**
  */
 public interface ValueMatcherFactory
 {
-  public ValueMatcher makeValueMatcher(String dimension, String value);
-  public ValueMatcher makeValueMatcher(String dimension, Predicate<String> value);
-  public ValueMatcher makeValueMatcher(String dimension, Bound bound);
+  public ValueMatcher makeValueMatcher(DimensionSchema dimension, Comparable value);
+  public ValueMatcher makeValueMatcher(DimensionSchema dimension, Predicate value);
+  public ValueMatcher makeValueMatcher(DimensionSchema dimension, Bound bound);
 }

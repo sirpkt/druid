@@ -22,6 +22,7 @@ package io.druid.query.dimension;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.metamx.common.StringUtils;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.query.extraction.ExtractionFn;
 
 import java.nio.ByteBuffer;
@@ -31,24 +32,24 @@ import java.nio.ByteBuffer;
 public class DefaultDimensionSpec implements DimensionSpec
 {
   private static final byte CACHE_TYPE_ID = 0x0;
-  private final String dimension;
+  private final DimensionSchema dimension;
   private final String outputName;
 
   @JsonCreator
   public DefaultDimensionSpec(
-      @JsonProperty("dimension") String dimension,
+      @JsonProperty("dimension") DimensionSchema dimension,
       @JsonProperty("outputName") String outputName
   )
   {
     this.dimension = dimension;
 
     // Do null check for legacy backwards compatibility, callers should be setting the value.
-    this.outputName = outputName == null ? dimension : outputName;
+    this.outputName = outputName == null ? dimension.toString() : outputName;
   }
 
   @Override
   @JsonProperty
-  public String getDimension()
+  public DimensionSchema getDimension()
   {
     return dimension;
   }
@@ -69,7 +70,7 @@ public class DefaultDimensionSpec implements DimensionSpec
   @Override
   public byte[] getCacheKey()
   {
-    byte[] dimensionBytes = StringUtils.toUtf8(dimension);
+    byte[] dimensionBytes = StringUtils.toUtf8(dimension.getName());
 
     return ByteBuffer.allocate(1 + dimensionBytes.length)
                      .put(CACHE_TYPE_ID)

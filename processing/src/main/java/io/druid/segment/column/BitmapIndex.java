@@ -24,17 +24,17 @@ import com.metamx.collections.bitmap.ImmutableBitmap;
 
 /**
  */
-public interface BitmapIndex
+public interface BitmapIndex<T>
 {
   public int getCardinality();
 
-  public String getValue(int index);
+  public T getValue(int index);
 
   public boolean hasNulls();
 
   public BitmapFactory getBitmapFactory();
 
-  public ImmutableBitmap getBitmap(String value);
+  public ImmutableBitmap getBitmap(T value);
 
   public ImmutableBitmap getBitmap(int idx);
 }

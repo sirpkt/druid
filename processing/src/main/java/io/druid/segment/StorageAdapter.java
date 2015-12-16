@@ -19,6 +19,7 @@
 
 package io.druid.segment;
 
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.segment.column.ColumnCapabilities;
 import io.druid.segment.data.Indexed;
 import org.joda.time.DateTime;
@@ -30,7 +31,7 @@ public interface StorageAdapter extends CursorFactory
 {
   public String getSegmentIdentifier();
   public Interval getInterval();
-  public Indexed<String> getAvailableDimensions();
+  public Indexed<DimensionSchema> getAvailableDimensions();
   public Iterable<String> getAvailableMetrics();
 
   /**
@@ -41,7 +42,7 @@ public interface StorageAdapter extends CursorFactory
    * @param column
    * @return
    */
-  public int getDimensionCardinality(String column);
+  public int getDimensionCardinality(DimensionSchema column);
   public DateTime getMinTime();
   public DateTime getMaxTime();
   public Capabilities getCapabilities();

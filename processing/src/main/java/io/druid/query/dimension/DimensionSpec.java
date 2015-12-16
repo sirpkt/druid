@@ -21,6 +21,7 @@ package io.druid.query.dimension;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.query.extraction.ExtractionFn;
 
 /**
@@ -32,7 +33,7 @@ import io.druid.query.extraction.ExtractionFn;
 })
 public interface DimensionSpec
 {
-  public String getDimension();
+  public DimensionSchema getDimension();
 
   public String getOutputName();
 

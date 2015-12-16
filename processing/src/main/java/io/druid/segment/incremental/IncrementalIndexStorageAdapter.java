@@ -28,6 +28,7 @@ import com.google.common.collect.Lists;
 import com.metamx.collections.spatial.search.Bound;
 import com.metamx.common.guava.Sequence;
 import com.metamx.common.guava.Sequences;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.granularity.QueryGranularity;
 import io.druid.query.QueryInterruptedException;
 import io.druid.query.extraction.ExtractionFn;
@@ -91,9 +92,9 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
   }
 
   @Override
-  public Indexed<String> getAvailableDimensions()
+  public Indexed<DimensionSchema> getAvailableDimensions()
   {
-    return new ListIndexed<String>(index.getDimensions(), String.class);
+    return new ListIndexed<DimensionSchema>(index.getDimensions(), DimensionSchema.class);
   }
 
   @Override
@@ -103,7 +104,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
   }
 
   @Override
-  public int getDimensionCardinality(String dimension)
+  public int getDimensionCardinality(DimensionSchema dimension)
   {
     if (dimension.equals(Column.TIME_COLUMN_NAME)) {
       return Integer.MAX_VALUE;
@@ -205,10 +206,10 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
               {
                 cursorMap = index.getSubMap(
                     new IncrementalIndex.TimeAndDims(
-                        timeStart, new String[][]{}
+                        timeStart, new Comparable[][]{}
                     ),
                     new IncrementalIndex.TimeAndDims(
-                        Math.min(actualInterval.getEndMillis(), gran.next(input)), new String[][]{}
+                        Math.min(actualInterval.getEndMillis(), gran.next(input)), new Comparable[][]{}
                     )
                 );
                 time = gran.toDateTime(input);
@@ -294,12 +295,12 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
 
               @Override
               public DimensionSelector makeDimensionSelector(
-                  final String dimension,
+                  final DimensionSchema dimension,
                   @Nullable final ExtractionFn extractionFn
               )
               {
                 if (dimension.equals(Column.TIME_COLUMN_NAME)) {
-                  return new SingleScanTimeDimSelector(makeLongColumnSelector(dimension), extractionFn);
+                  return new SingleScanTimeDimSelector(makeLongColumnSelector(dimension.getName()), extractionFn);
                 }
 
                 final IncrementalIndex.DimDim dimValLookup = index.getDimension(dimension);
@@ -317,9 +318,9 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                   {
                     final ArrayList<Integer> vals = Lists.newArrayList();
                     if (dimIndex < currEntry.getKey().getDims().length) {
-                      final String[] dimVals = currEntry.getKey().getDims()[dimIndex];
+                      final Comparable[] dimVals = currEntry.getKey().getDims()[dimIndex];
                       if (dimVals != null) {
-                        for (String dimVal : dimVals) {
+                        for (Comparable dimVal : dimVals) {
                           int id = dimValLookup.getId(dimVal);
                           if (id < maxId) {
                             vals.add(id);
@@ -378,8 +379,8 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                   @Override
                   public String lookupName(int id)
                   {
-                    final String value = dimValLookup.getValue(id);
-                    return extractionFn == null ? value : extractionFn.apply(value);
+                    final Comparable value = dimValLookup.getValue(id);
+                    return String.valueOf(extractionFn == null ? value : extractionFn.apply(value));
 
                   }
 
@@ -526,12 +527,12 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                         return null;
                       }
 
-                      String[][] dims = key.getDims();
+                      Comparable[][] dims = key.getDims();
                       if (dimensionIndex >= dims.length) {
                         return null;
                       }
 
-                      final String[] dimVals = dims[dimensionIndex];
+                      final Comparable[] dimVals = dims[dimensionIndex];
                       if (dimVals == null || dimVals.length == 0) {
                         return null;
                       }
@@ -595,15 +596,15 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
     }
 
     @Override
-    public ValueMatcher makeValueMatcher(String dimension, final String value)
+    public ValueMatcher makeValueMatcher(DimensionSchema dimension, final Comparable value)
     {
       Integer dimIndexObject = index.getDimensionIndex(dimension);
       if (dimIndexObject == null) {
-        return new BooleanValueMatcher(Strings.isNullOrEmpty(value));
+        return new BooleanValueMatcher(Strings.isNullOrEmpty(String.valueOf(value)));
       }
       final IncrementalIndex.DimDim dimDim = index.getDimension(dimension);
       if (!dimDim.contains(value)) {
-        if (Strings.isNullOrEmpty(value)) {
+        if (Strings.isNullOrEmpty(String.valueOf(value))) {
           final int dimIndex = dimIndexObject;
 
           return new ValueMatcher()
@@ -611,7 +612,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
             @Override
             public boolean matches()
             {
-              String[][] dims = holder.getKey().getDims();
+              Comparable[][] dims = holder.getKey().getDims();
               if (dimIndex >= dims.length || dims[dimIndex] == null) {
                 return true;
               }
@@ -623,19 +624,19 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
       }
 
       final int dimIndex = dimIndexObject;
-      final String id = dimDim.get(value);
+      final Comparable id = dimDim.get(value);
 
       return new ValueMatcher()
       {
         @Override
         public boolean matches()
         {
-          String[][] dims = holder.getKey().getDims();
+          Comparable[][] dims = holder.getKey().getDims();
           if (dimIndex >= dims.length || dims[dimIndex] == null) {
-            return Strings.isNullOrEmpty(value);
+            return Strings.isNullOrEmpty(String.valueOf(value));
           }
 
-          for (String dimVal : dims[dimIndex]) {
+          for (Comparable dimVal : dims[dimIndex]) {
             if (dimDim.compareCannonicalValues(id, dimVal)) {
               return true;
             }
@@ -646,7 +647,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
     }
 
     @Override
-    public ValueMatcher makeValueMatcher(String dimension, final Predicate<String> predicate)
+    public ValueMatcher makeValueMatcher(DimensionSchema dimension, final Predicate predicate)
     {
       Integer dimIndexObject = index.getDimensionIndex(dimension);
       if (dimIndexObject == null) {
@@ -659,12 +660,12 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
         @Override
         public boolean matches()
         {
-          String[][] dims = holder.getKey().getDims();
+          Comparable[][] dims = holder.getKey().getDims();
           if (dimIndex >= dims.length || dims[dimIndex] == null) {
             return predicate.apply(null);
           }
 
-          for (String dimVal : dims[dimIndex]) {
+          for (Comparable dimVal : dims[dimIndex]) {
             if (predicate.apply(dimVal)) {
               return true;
             }
@@ -675,7 +676,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
     }
 
     @Override
-    public ValueMatcher makeValueMatcher(final String dimension, final Bound bound)
+    public ValueMatcher makeValueMatcher(final DimensionSchema dimension, final Bound bound)
     {
       Integer dimIndexObject = index.getDimensionIndex(dimension);
       if (dimIndexObject == null) {
@@ -688,13 +689,13 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
         @Override
         public boolean matches()
         {
-          String[][] dims = holder.getKey().getDims();
+          Comparable[][] dims = holder.getKey().getDims();
           if (dimIndex >= dims.length || dims[dimIndex] == null) {
             return false;
           }
 
-          for (String dimVal : dims[dimIndex]) {
-            List<String> stringCoords = Lists.newArrayList(SPLITTER.split(dimVal));
+          for (Comparable dimVal : dims[dimIndex]) {
+            List<String> stringCoords = Lists.newArrayList(SPLITTER.split(String.valueOf(dimVal)));
             float[] coords = new float[stringCoords.size()];
             for (int j = 0; j < coords.length; j++) {
               coords[j] = Float.valueOf(stringCoords.get(j));

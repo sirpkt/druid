@@ -24,6 +24,7 @@ import com.metamx.collections.bitmap.BitmapFactory;
 import com.metamx.collections.bitmap.ImmutableBitmap;
 import com.metamx.collections.spatial.ImmutableRTree;
 import com.metamx.common.guava.CloseQuietly;
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.query.filter.BitmapIndexSelector;
 import io.druid.segment.column.Column;
 import io.druid.segment.column.DictionaryEncodedColumn;
@@ -50,19 +51,19 @@ public class ColumnSelectorBitmapIndexSelector implements BitmapIndexSelector
   }
 
   @Override
-  public Indexed<String> getDimensionValues(String dimension)
+  public Indexed<Object> getDimensionValues(final DimensionSchema dimension)
   {
-    final Column columnDesc = index.getColumn(dimension);
+    final Column columnDesc = index.getColumn(dimension.getName());
     if (columnDesc == null || !columnDesc.getCapabilities().isDictionaryEncoded()) {
       return null;
     }
     final DictionaryEncodedColumn column = columnDesc.getDictionaryEncoding();
-    return new Indexed<String>()
+    return new Indexed<Object>()
     {
       @Override
-      public Class<? extends String> getClazz()
+      public Class<?> getClazz()
       {
-        return String.class;
+        return dimension.getType().getClazz();
       }
 
       @Override
@@ -72,19 +73,19 @@ public class ColumnSelectorBitmapIndexSelector implements BitmapIndexSelector
       }
 
       @Override
-      public String get(int index)
+      public Object get(int index)
       {
         return column.lookupName(index);
       }
 
       @Override
-      public int indexOf(String value)
+      public int indexOf(Object value)
       {
-        return column.lookupId(value);
+        return column.lookupId(String.valueOf(value));
       }
 
       @Override
-      public Iterator<String> iterator()
+      public Iterator<Object> iterator()
       {
         return IndexedIterable.create(this).iterator();
       }
@@ -111,11 +112,11 @@ public class ColumnSelectorBitmapIndexSelector implements BitmapIndexSelector
   }
 
   @Override
-  public ImmutableBitmap getBitmapIndex(String dimension, String value)
+  public ImmutableBitmap getBitmapIndex(DimensionSchema dimension, Object value)
   {
-    final Column column = index.getColumn(dimension);
+    final Column column = index.getColumn(dimension.getName());
     if (column == null) {
-      if (Strings.isNullOrEmpty(value)) {
+      if (Strings.isNullOrEmpty(String.valueOf(value))) {
         return bitmapFactory.complement(bitmapFactory.makeEmptyImmutableBitmap(), getNumRows());
       } else {
         return bitmapFactory.makeEmptyImmutableBitmap();
@@ -130,9 +131,9 @@ public class ColumnSelectorBitmapIndexSelector implements BitmapIndexSelector
   }
 
   @Override
-  public ImmutableRTree getSpatialIndex(String dimension)
+  public ImmutableRTree getSpatialIndex(DimensionSchema dimension)
   {
-    final Column column = index.getColumn(dimension);
+    final Column column = index.getColumn(dimension.getName());
     if (column == null || !column.getCapabilities().hasSpatialIndexes()) {
       return new ImmutableRTree();
     }

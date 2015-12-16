@@ -19,6 +19,7 @@
 
 package io.druid.segment;
 
+import io.druid.data.input.impl.DimensionSchema;
 import io.druid.segment.column.BitmapIndexSeeker;
 import io.druid.segment.column.ColumnCapabilities;
 import io.druid.segment.data.Indexed;
@@ -36,15 +37,17 @@ public interface IndexableAdapter
 
   Indexed<String> getDimensionNames();
 
+  Indexed<DimensionSchema> getDimensions();
+
   Indexed<String> getMetricNames();
 
-  Indexed<String> getDimValueLookup(String dimension);
+  Indexed<Comparable> getDimValueLookup(DimensionSchema dimension);
 
   Iterable<Rowboat> getRows();
 
-  IndexedInts getBitmapIndex(String dimension, String value);
+  IndexedInts getBitmapIndex(DimensionSchema dimension, Comparable value);
 
-  BitmapIndexSeeker getBitmapIndexSeeker(String dimension);
+  BitmapIndexSeeker getBitmapIndexSeeker(DimensionSchema dimension);
 
   String getMetricType(String metric);
 

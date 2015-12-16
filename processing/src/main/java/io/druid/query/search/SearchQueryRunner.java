@@ -113,7 +113,7 @@ public class SearchQueryRunner implements QueryRunner<Result<SearchResultValue>>
       }
 
       for (DimensionSpec dimension : dimsToSearch) {
-        final Column column = index.getColumn(dimension.getDimension());
+        final Column column = index.getColumn(dimension.getDimension().getName());
         if (column == null) {
           continue;
         }

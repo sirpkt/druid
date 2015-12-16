@@ -26,5 +26,5 @@ import io.druid.segment.data.IndexedInts;
  */
 public interface BitmapIndexSeeker
 {
-  public IndexedInts seek(String value);
+  public IndexedInts seek(Comparable value);
 }
