@@ -48,6 +48,8 @@ import com.metamx.common.io.smoosh.SmooshedWriter;
 import com.metamx.common.logger.Logger;
 import com.metamx.emitter.EmittingLogger;
 import io.druid.common.utils.SerializerUtils;
+import io.druid.data.input.impl.DimensionSchema;
+import io.druid.data.input.impl.DimensionType;
 import io.druid.segment.column.Column;
 import io.druid.segment.column.ColumnBuilder;
 import io.druid.segment.column.ColumnConfig;
@@ -327,15 +329,15 @@ public class IndexIO
           Arrays.deepToString(dims2)
       );
     }
-    final Indexed<String> dim1Names = adapter1.getDimensionNames();
-    final Indexed<String> dim2Names = adapter2.getDimensionNames();
+    final Indexed<DimensionSchema> dim1Names = adapter1.getDimensions();
+    final Indexed<DimensionSchema> dim2Names = adapter2.getDimensions();
     for (int i = 0; i < dims1.length; ++i) {
       final int[] dim1Vals = dims1[i];
       final int[] dim2Vals = dims2[i];
-      final String dim1Name = dim1Names.get(i);
-      final String dim2Name = dim2Names.get(i);
-      final Indexed<String> dim1ValNames = adapter1.getDimValueLookup(dim1Name);
-      final Indexed<String> dim2ValNames = adapter2.getDimValueLookup(dim2Name);
+      final DimensionSchema dim1Name = dim1Names.get(i);
+      final DimensionSchema dim2Name = dim2Names.get(i);
+      final Indexed<Comparable> dim1ValNames = adapter1.getDimValueLookup(dim1Name);
+      final Indexed<Comparable> dim2ValNames = adapter2.getDimValueLookup(dim2Name);
 
       if (dim1Vals == null || dim2Vals == null) {
         if (dim1Vals != dim2Vals) {
@@ -351,7 +353,7 @@ public class IndexIO
       if (dim1Vals.length != dim2Vals.length) {
         // Might be OK if one of them has null. This occurs in IndexMakerTest
         if (dim1Vals.length == 0 && dim2Vals.length == 1) {
-          final String dimValName = dim2ValNames.get(dim2Vals[0]);
+          final Comparable dimValName = dim2ValNames.get(dim2Vals[0]);
           if (dimValName == null) {
             continue;
           } else {
@@ -362,7 +364,7 @@ public class IndexIO
             );
           }
         } else if (dim2Vals.length == 0 && dim1Vals.length == 1) {
-          final String dimValName = dim1ValNames.get(dim1Vals[0]);
+          final Comparable dimValName = dim1ValNames.get(dim1Vals[0]);
           if (dimValName == null) {
             continue;
           } else {
@@ -390,8 +392,8 @@ public class IndexIO
           continue;
         }
 
-        final String dim1ValName = dIdex1 < 0 ? null : dim1ValNames.get(dIdex1);
-        final String dim2ValName = dIdex2 < 0 ? null : dim2ValNames.get(dIdex2);
+        final Comparable dim1ValName = dIdex1 < 0 ? null : dim1ValNames.get(dIdex1);
+        final Comparable dim2ValName = dIdex2 < 0 ? null : dim2ValNames.get(dIdex2);
         if ((dim1ValName == null) || (dim2ValName == null)) {
           if ((dim1ValName == null) && (dim2ValName == null)) {
             continue;
@@ -449,8 +451,8 @@ public class IndexIO
       ByteBuffer indexBuffer = smooshedFiles.mapFile("index.drd");
 
       indexBuffer.get(); // Skip the version byte
-      final GenericIndexed<String> availableDimensions = GenericIndexed.read(
-          indexBuffer, GenericIndexed.STRING_STRATEGY
+      final GenericIndexed<DimensionSchema> availableDimensions = GenericIndexed.read(
+          indexBuffer, GenericIndexed.DIMENSION_SCHEMA_STRATEGY
       );
       final GenericIndexed<String> availableMetrics = GenericIndexed.read(
           indexBuffer, GenericIndexed.STRING_STRATEGY
@@ -473,21 +475,23 @@ public class IndexIO
         metrics.put(metric, holder);
       }
 
-      Map<String, GenericIndexed<String>> dimValueLookups = Maps.newHashMap();
-      Map<String, VSizeIndexed> dimColumns = Maps.newHashMap();
+      Map<DimensionSchema, GenericIndexed> dimValueLookups = Maps.newHashMap();
+      Map<DimensionSchema, VSizeIndexed> dimColumns = Maps.newHashMap();
       Map<String, GenericIndexed<ImmutableBitmap>> bitmaps = Maps.newHashMap();
 
-      for (String dimension : IndexedIterable.create(availableDimensions)) {
-        ByteBuffer dimBuffer = smooshedFiles.mapFile(makeDimFile(inDir, dimension).getName());
+      for (DimensionSchema dimension : IndexedIterable.create(availableDimensions)) {
+        ByteBuffer dimBuffer = smooshedFiles.mapFile(makeDimFile(inDir, dimension.getName()).getName());
         String fileDimensionName = serializerUtils.readString(dimBuffer);
         Preconditions.checkState(
             dimension.equals(fileDimensionName),
             "Dimension file[%s] has dimension[%s] in it!?",
-            makeDimFile(inDir, dimension),
+            makeDimFile(inDir, dimension.toString()),
             fileDimensionName
         );
 
-        dimValueLookups.put(dimension, GenericIndexed.read(dimBuffer, GenericIndexed.STRING_STRATEGY));
+        dimValueLookups.put(dimension, GenericIndexed.read(dimBuffer,
+            dimension.getType() == DimensionType.STRING ?
+                GenericIndexed.STRING_STRATEGY : GenericIndexed.FLOAT_STRATEGY));
         dimColumns.put(dimension, VSizeIndexed.readFromByteBuffer(dimBuffer));
       }
 

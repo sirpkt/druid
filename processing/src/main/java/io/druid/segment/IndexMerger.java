@@ -828,23 +828,25 @@ public class IndexMerger
       if (!dimension.toString().equals(serializerUtils.readString(dimValsMapped))) {
         throw new ISE("dimensions[%s] didn't equate!?  This is a major WTF moment.", dimension.toString());
       }
-      Indexed<String> dimVals = GenericIndexed.read(dimValsMapped, GenericIndexed.STRING_STRATEGY);
+
+      Indexed dimVals = GenericIndexed.read(dimValsMapped,
+          dimension.getType() == DimensionType.STRING ? GenericIndexed.STRING_STRATEGY : GenericIndexed.FLOAT_STRATEGY);
       log.info("Starting dimension[%s] with cardinality[%,d]", dimension, dimVals.size());
 
       final BitmapSerdeFactory bitmapSerdeFactory = indexSpec.getBitmapSerdeFactory();
       GenericIndexedWriter<ImmutableBitmap> writer = new GenericIndexedWriter<>(
-          ioPeon, dimension, bitmapSerdeFactory.getObjectStrategy()
+          ioPeon, dimension.getName(), bitmapSerdeFactory.getObjectStrategy()
       );
       writer.open();
 
-      boolean isSpatialDim = columnCapabilities.get(dimension).hasSpatialIndexes();
+      boolean isSpatialDim = columnCapabilities.get(dimension.getName()).hasSpatialIndexes();
       ByteBufferWriter<ImmutableRTree> spatialWriter = null;
       RTree tree = null;
       IOPeon spatialIoPeon = new TmpFileIOPeon();
       if (isSpatialDim) {
         BitmapFactory bitmapFactory = bitmapSerdeFactory.getBitmapFactory();
         spatialWriter = new ByteBufferWriter<ImmutableRTree>(
-            spatialIoPeon, dimension, new IndexedRTree.ImmutableRTreeObjectStrategy(bitmapFactory)
+            spatialIoPeon, dimension.getName(), new IndexedRTree.ImmutableRTreeObjectStrategy(bitmapFactory)
         );
         spatialWriter.open();
         tree = new RTree(2, new LinearGutmanSplitStrategy(0, 50, bitmapFactory), bitmapFactory);
@@ -854,13 +856,13 @@ public class IndexMerger
       for (int j = 0; j < indexes.size(); j++) {
         bitmapIndexSeeker[j] = indexes.get(j).getBitmapIndexSeeker(dimension);
       }
-      for (String dimVal : IndexedIterable.create(dimVals)) {
+      for (Object dimVal : IndexedIterable.create(dimVals)) {
         progress.progress();
         List<Iterable<Integer>> convertedInverteds = Lists.newArrayListWithCapacity(indexes.size());
         for (int j = 0; j < indexes.size(); ++j) {
           convertedInverteds.add(
               new ConvertingIndexedInts(
-                  bitmapIndexSeeker[j].seek(dimVal), rowNumConversions.get(j)
+                  bitmapIndexSeeker[j].seek((Comparable)dimVal), rowNumConversions.get(j)
               )
           );
         }
@@ -880,7 +882,7 @@ public class IndexMerger
         );
 
         if (isSpatialDim && dimVal != null) {
-          List<String> stringCoords = Lists.newArrayList(SPLITTER.split(dimVal));
+          List<String> stringCoords = Lists.newArrayList(SPLITTER.split((String)dimVal));
           float[] coords = new float[stringCoords.size()];
           for (int j = 0; j < coords.length; j++) {
             coords[j] = Float.valueOf(stringCoords.get(j));
@@ -890,7 +892,7 @@ public class IndexMerger
       }
       writer.close();
 
-      serializerUtils.writeString(out, dimension);
+      serializerUtils.writeString(out, dimension.toString());
       ByteStreams.copy(writer.combineStreams(), out);
       ioPeon.cleanup();
 
@@ -900,7 +902,7 @@ public class IndexMerger
         spatialWriter.write(ImmutableRTree.newImmutableFromMutable(tree));
         spatialWriter.close();
 
-        serializerUtils.writeString(spatialOut, dimension);
+        serializerUtils.writeString(spatialOut, dimension.toString());
         ByteStreams.copy(spatialWriter.combineStreams(), spatialOut);
         spatialIoPeon.cleanup();
       }
@@ -914,7 +916,16 @@ public class IndexMerger
             Arrays.asList(
                 "index.drd", "inverted.drd", "spatial.drd", String.format("time_%s.drd", IndexIO.BYTE_ORDER)
             ),
-            Iterables.transform(mergedDimensions, GuavaUtils.formatFunction("dim_%s.drd")),
+            Iterables.transform(
+                Lists.transform(
+                    mergedDimensions,
+                    new Function<DimensionSchema, String>() {
+                      @Override
+                      public String apply(DimensionSchema dimSchema) {
+                        return dimSchema.getName();
+                      }
+                    })
+                , GuavaUtils.formatFunction("dim_%s.drd")),
             Iterables.transform(
                 mergedMetrics, GuavaUtils.formatFunction(String.format("met_%%s_%s.drd", IndexIO.BYTE_ORDER))
             )
@@ -952,7 +963,7 @@ public class IndexMerger
     createIndexDrdFile(
         IndexIO.V8_VERSION,
         v8OutDir,
-        GenericIndexed.fromIterable(mergedDimensions, GenericIndexed.STRING_STRATEGY),
+        GenericIndexed.fromIterable(mergedDimensions, GenericIndexed.DIMENSION_SCHEMA_STRATEGY),
         GenericIndexed.fromIterable(mergedMetrics, GenericIndexed.STRING_STRATEGY),
         dataInterval,
         indexSpec.getBitmapSerdeFactory()
@@ -980,7 +991,7 @@ public class IndexMerger
   public void createIndexDrdFile(
       byte versionId,
       File inDir,
-      GenericIndexed<String> availableDimensions,
+      GenericIndexed<DimensionSchema> availableDimensions,
       GenericIndexed<String> availableMetrics,
       Interval dataInterval,
       BitmapSerdeFactory bitmapSerdeFactory
