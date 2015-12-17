@@ -186,7 +186,7 @@ public class SearchQueryRunner implements QueryRunner<Result<SearchResultValue>>
                 if (selector != null) {
                   final IndexedInts vals = selector.getRow();
                   for (int i = 0; i < vals.size(); ++i) {
-                    final String dimVal = selector.lookupName(vals.get(i));
+                    final Comparable dimVal = selector.lookupName(vals.get(i));
                     if (searchQuerySpec.accept(dimVal)) {
                       set.add(new SearchHit(entry.getKey(), dimVal));
                       if (set.size() >= limit) {

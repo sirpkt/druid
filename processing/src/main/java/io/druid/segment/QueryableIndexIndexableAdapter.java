@@ -22,6 +22,7 @@ package io.druid.segment;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import com.metamx.common.ISE;
 import com.metamx.common.guava.CloseQuietly;
@@ -45,6 +46,8 @@ import io.druid.segment.data.Indexed;
 import io.druid.segment.data.IndexedInts;
 import io.druid.segment.data.IndexedIterable;
 import io.druid.segment.data.ListIndexed;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 import org.joda.time.Interval;
 
 import java.io.Closeable;
@@ -116,9 +119,10 @@ public class QueryableIndexIndexableAdapter implements IndexableAdapter
   }
 
   @Override
-  public Indexed<String> getDimValueLookup(String dimension)
+  public Indexed<Comparable> getDimValueLookup(String dimension)
   {
     final Column column = input.getColumn(dimension);
+    final DimensionType dimType = DimensionSchema.fromString(dimension).getType();
 
     if (column == null) {
       return null;
@@ -130,12 +134,12 @@ public class QueryableIndexIndexableAdapter implements IndexableAdapter
       return null;
     }
 
-    return new Indexed<String>()
+    return new Indexed<Comparable>()
     {
       @Override
-      public Class<? extends String> getClazz()
+      public Class<? extends Comparable> getClazz()
       {
-        return String.class;
+        return dimType.getClazz();
       }
 
       @Override
@@ -145,19 +149,19 @@ public class QueryableIndexIndexableAdapter implements IndexableAdapter
       }
 
       @Override
-      public String get(int index)
+      public Comparable get(int index)
       {
         return dict.lookupName(index);
       }
 
       @Override
-      public int indexOf(String value)
+      public int indexOf(Comparable value)
       {
         return dict.lookupId(value);
       }
 
       @Override
-      public Iterator<String> iterator()
+      public Iterator<Comparable> iterator()
       {
         return IndexedIterable.create(this).iterator();
       }
@@ -295,7 +299,7 @@ public class QueryableIndexIndexableAdapter implements IndexableAdapter
   }
 
   @Override
-  public IndexedInts getBitmapIndex(String dimension, String value)
+  public IndexedInts getBitmapIndex(String dimension, Comparable value)
   {
     final Column column = input.getColumn(dimension);
 
@@ -349,7 +353,7 @@ public class QueryableIndexIndexableAdapter implements IndexableAdapter
       return new EmptyBitmapIndexSeeker();
     }
 
-    final Indexed<String> dimSet = getDimValueLookup(dimension);
+    final Indexed<Comparable> dimSet = getDimValueLookup(dimension);
 
     // BitmapIndexSeeker is the main performance boost comes from.
     // In the previous version of index merge, during the creation of invert index, we do something like
@@ -368,17 +372,17 @@ public class QueryableIndexIndexableAdapter implements IndexableAdapter
     return new BitmapIndexSeeker()
     {
       private int currIndex = 0;
-      private String currVal = null;
-      private String lastVal = null;
+      private Comparable currVal = null;
+      private Comparable lastVal = null;
 
       @Override
-      public IndexedInts seek(String value)
+      public IndexedInts seek(Comparable value)
       {
         if (dimSet == null || dimSet.size() == 0) {
           return new EmptyIndexedInts();
         }
         if (lastVal != null) {
-          if (GenericIndexed.STRING_STRATEGY.compare(value, lastVal) <= 0) {
+          if (Ordering.natural().nullsFirst().compare(value, lastVal) <= 0) {
             throw new ISE("Value[%s] is less than the last value[%s] I have, cannot be.",
                 value, lastVal);
           }
@@ -387,7 +391,7 @@ public class QueryableIndexIndexableAdapter implements IndexableAdapter
         if (currVal == null) {
           currVal = dimSet.get(currIndex);
         }
-        int compareResult = GenericIndexed.STRING_STRATEGY.compare(currVal, value);
+        int compareResult = Ordering.natural().nullsFirst().compare(currVal, value);
         if (compareResult == 0) {
           IndexedInts ret = new BitmapCompressedIndexedInts(bitmaps.getBitmap(currIndex));
           ++currIndex;

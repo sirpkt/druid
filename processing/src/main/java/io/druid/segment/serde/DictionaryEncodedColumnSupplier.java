@@ -31,13 +31,13 @@ import io.druid.segment.data.IndexedMultivalue;
 */
 public class DictionaryEncodedColumnSupplier implements Supplier<DictionaryEncodedColumn>
 {
-  private final GenericIndexed<String> dictionary;
+  private final GenericIndexed<Comparable> dictionary;
   private final Supplier<IndexedInts> singleValuedColumn;
   private final Supplier<IndexedMultivalue<IndexedInts>> multiValuedColumn;
   private final int lookupCacheSize;
 
   public DictionaryEncodedColumnSupplier(
-      GenericIndexed<String> dictionary,
+      GenericIndexed<Comparable> dictionary,
       Supplier<IndexedInts> singleValuedColumn,
       Supplier<IndexedMultivalue<IndexedInts>> multiValuedColumn,
       int lookupCacheSize

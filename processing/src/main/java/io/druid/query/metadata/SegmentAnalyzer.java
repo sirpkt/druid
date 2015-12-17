@@ -201,7 +201,7 @@ public class SegmentAnalyzer
 
       if (analysisHasSize(analysisTypes)) {
         for (int i = 0; i < cardinality; ++i) {
-          String value = bitmapIndex.getValue(i);
+          String value = (String)bitmapIndex.getValue(i);
           if (value != null) {
             size += StringUtils.toUtf8(value).length * bitmapIndex.getBitmap(value).size();
           }

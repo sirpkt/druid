@@ -29,12 +29,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class SearchHit implements Comparable<SearchHit>
 {
   private final String dimension;
-  private final String value;
+  private final Comparable value;
 
   @JsonCreator
   public SearchHit(
       @JsonProperty("dimension") String dimension,
-      @JsonProperty("value") String value
+      @JsonProperty("value") Comparable value
   )
   {
     this.dimension = checkNotNull(dimension);
@@ -48,7 +48,7 @@ public class SearchHit implements Comparable<SearchHit>
   }
 
   @JsonProperty
-  public String getValue()
+  public Comparable getValue()
   {
     return value;
   }

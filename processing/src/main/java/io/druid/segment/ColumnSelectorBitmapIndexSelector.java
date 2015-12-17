@@ -30,6 +30,8 @@ import io.druid.segment.column.DictionaryEncodedColumn;
 import io.druid.segment.column.GenericColumn;
 import io.druid.segment.data.Indexed;
 import io.druid.segment.data.IndexedIterable;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 
 import java.util.Iterator;
 
@@ -50,19 +52,20 @@ public class ColumnSelectorBitmapIndexSelector implements BitmapIndexSelector
   }
 
   @Override
-  public Indexed<String> getDimensionValues(String dimension)
+  public Indexed<Comparable> getDimensionValues(String dimension)
   {
     final Column columnDesc = index.getColumn(dimension);
     if (columnDesc == null || !columnDesc.getCapabilities().isDictionaryEncoded()) {
       return null;
     }
     final DictionaryEncodedColumn column = columnDesc.getDictionaryEncoding();
-    return new Indexed<String>()
+    final DimensionType dimType = DimensionSchema.fromString(dimension).getType();
+    return new Indexed<Comparable>()
     {
       @Override
-      public Class<? extends String> getClazz()
+      public Class<? extends Comparable> getClazz()
       {
-        return String.class;
+        return dimType.getClazz();
       }
 
       @Override
@@ -72,19 +75,19 @@ public class ColumnSelectorBitmapIndexSelector implements BitmapIndexSelector
       }
 
       @Override
-      public String get(int index)
+      public Comparable get(int index)
       {
         return column.lookupName(index);
       }
 
       @Override
-      public int indexOf(String value)
+      public int indexOf(Comparable value)
       {
         return column.lookupId(value);
       }
 
       @Override
-      public Iterator<String> iterator()
+      public Iterator<Comparable> iterator()
       {
         return IndexedIterable.create(this).iterator();
       }
@@ -111,11 +114,11 @@ public class ColumnSelectorBitmapIndexSelector implements BitmapIndexSelector
   }
 
   @Override
-  public ImmutableBitmap getBitmapIndex(String dimension, String value)
+  public ImmutableBitmap getBitmapIndex(String dimension, Comparable value)
   {
     final Column column = index.getColumn(dimension);
     if (column == null) {
-      if (Strings.isNullOrEmpty(value)) {
+      if (value == null) {
         return bitmapFactory.complement(bitmapFactory.makeEmptyImmutableBitmap(), getNumRows());
       } else {
         return bitmapFactory.makeEmptyImmutableBitmap();

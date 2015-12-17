@@ -41,6 +41,8 @@ import io.druid.segment.column.ValueType;
 import io.druid.segment.data.Indexed;
 import io.druid.segment.data.IndexedInts;
 import io.druid.segment.data.Offset;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
@@ -317,6 +319,8 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
 
                       final DictionaryEncodedColumn column = cachedColumn;
 
+                      final DimensionType dimType = DimensionSchema.fromString(dimension).getType();
+
                       if (column == null) {
                         return NULL_DIMENSION_SELECTOR;
                       } else if (columnDesc.getCapabilities().hasMultipleValues()) {
@@ -335,16 +339,15 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                           }
 
                           @Override
-                          public String lookupName(int id)
+                          public Comparable lookupName(int id)
                           {
-                            final String value = column.lookupName(id);
-                            return extractionFn == null ?
-                                   Strings.nullToEmpty(value) :
-                                   extractionFn.apply(Strings.nullToEmpty(value));
+                            final Comparable value = column.lookupName(id);
+                            final Comparable retValue = (value == null) ? dimType.getNullReplacement(): value;
+                            return extractionFn == null ? retValue : extractionFn.apply(retValue);
                           }
 
                           @Override
-                          public int lookupId(String name)
+                          public int lookupId(Comparable name)
                           {
                             if (extractionFn != null) {
                               throw new UnsupportedOperationException(
@@ -402,14 +405,14 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                           }
 
                           @Override
-                          public String lookupName(int id)
+                          public Comparable lookupName(int id)
                           {
-                            final String value = column.lookupName(id);
+                            final Comparable value = column.lookupName(id);
                             return extractionFn == null ? value : extractionFn.apply(value);
                           }
 
                           @Override
-                          public int lookupId(String name)
+                          public int lookupId(Comparable name)
                           {
                             if (extractionFn != null) {
                               throw new UnsupportedOperationException(
@@ -603,25 +606,25 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                               } else if (multiValueRow.size() == 1) {
                                 return columnVals.lookupName(multiValueRow.get(0));
                               } else {
-                                final String[] strings = new String[multiValueRow.size()];
+                                final Comparable[] values = new Comparable[multiValueRow.size()];
                                 for (int i = 0; i < multiValueRow.size(); i++) {
-                                  strings[i] = columnVals.lookupName(multiValueRow.get(i));
+                                  values[i] = columnVals.lookupName(multiValueRow.get(i));
                                 }
-                                return strings;
+                                return values;
                               }
                             }
                           };
                         } else {
-                          return new ObjectColumnSelector<String>()
+                          return new ObjectColumnSelector<Comparable>()
                           {
                             @Override
                             public Class classOfObject()
                             {
-                              return String.class;
+                              return Comparable.class;
                             }
 
                             @Override
-                            public String get()
+                            public Comparable get()
                             {
                               return columnVals.lookupName(columnVals.getSingleValueRow(cursorOffset.getOffset()));
                             }

@@ -95,7 +95,7 @@ public class FilteredAggregatorTest
             }
 
             @Override
-            public String lookupName(int id)
+            public Comparable lookupName(int id)
             {
               switch (id) {
                 case 0:
@@ -108,9 +108,9 @@ public class FilteredAggregatorTest
             }
 
             @Override
-            public int lookupId(String name)
+            public int lookupId(Comparable name)
             {
-              switch (name) {
+              switch ((String)name) {
                 case "a":
                   return 0;
                 case "b":

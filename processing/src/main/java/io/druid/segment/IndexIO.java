@@ -68,6 +68,8 @@ import io.druid.segment.data.IndexedMultivalue;
 import io.druid.segment.data.IndexedRTree;
 import io.druid.segment.data.VSizeIndexed;
 import io.druid.segment.data.VSizeIndexedInts;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 import io.druid.segment.serde.BitmapIndexColumnPartSupplier;
 import io.druid.segment.serde.ComplexColumnPartSerde;
 import io.druid.segment.serde.ComplexColumnPartSupplier;
@@ -334,8 +336,8 @@ public class IndexIO
       final int[] dim2Vals = dims2[i];
       final String dim1Name = dim1Names.get(i);
       final String dim2Name = dim2Names.get(i);
-      final Indexed<String> dim1ValNames = adapter1.getDimValueLookup(dim1Name);
-      final Indexed<String> dim2ValNames = adapter2.getDimValueLookup(dim2Name);
+      final Indexed<Comparable> dim1ValNames = adapter1.getDimValueLookup(dim1Name);
+      final Indexed<Comparable> dim2ValNames = adapter2.getDimValueLookup(dim2Name);
 
       if (dim1Vals == null || dim2Vals == null) {
         if (dim1Vals != dim2Vals) {
@@ -351,7 +353,7 @@ public class IndexIO
       if (dim1Vals.length != dim2Vals.length) {
         // Might be OK if one of them has null. This occurs in IndexMakerTest
         if (dim1Vals.length == 0 && dim2Vals.length == 1) {
-          final String dimValName = dim2ValNames.get(dim2Vals[0]);
+          final Comparable dimValName = dim2ValNames.get(dim2Vals[0]);
           if (dimValName == null) {
             continue;
           } else {
@@ -362,7 +364,7 @@ public class IndexIO
             );
           }
         } else if (dim2Vals.length == 0 && dim1Vals.length == 1) {
-          final String dimValName = dim1ValNames.get(dim1Vals[0]);
+          final Comparable dimValName = dim1ValNames.get(dim1Vals[0]);
           if (dimValName == null) {
             continue;
           } else {
@@ -390,8 +392,8 @@ public class IndexIO
           continue;
         }
 
-        final String dim1ValName = dIdex1 < 0 ? null : dim1ValNames.get(dIdex1);
-        final String dim2ValName = dIdex2 < 0 ? null : dim2ValNames.get(dIdex2);
+        final Comparable dim1ValName = dIdex1 < 0 ? null : dim1ValNames.get(dIdex1);
+        final Comparable dim2ValName = dIdex2 < 0 ? null : dim2ValNames.get(dIdex2);
         if ((dim1ValName == null) || (dim2ValName == null)) {
           if ((dim1ValName == null) && (dim2ValName == null)) {
             continue;
@@ -473,7 +475,7 @@ public class IndexIO
         metrics.put(metric, holder);
       }
 
-      Map<String, GenericIndexed<String>> dimValueLookups = Maps.newHashMap();
+      Map<String, GenericIndexed<Comparable>> dimValueLookups = Maps.newHashMap();
       Map<String, VSizeIndexed> dimColumns = Maps.newHashMap();
       Map<String, GenericIndexed<ImmutableBitmap>> bitmaps = Maps.newHashMap();
 
@@ -487,7 +489,8 @@ public class IndexIO
             fileDimensionName
         );
 
-        dimValueLookups.put(dimension, GenericIndexed.read(dimBuffer, GenericIndexed.STRING_STRATEGY));
+        DimensionType dimType = DimensionSchema.fromString(dimension).getType();
+        dimValueLookups.put(dimension, GenericIndexed.read(dimBuffer, GenericIndexed.getObjectStrategy(dimType)));
         dimColumns.put(dimension, VSizeIndexed.readFromByteBuffer(dimBuffer));
       }
 
@@ -598,8 +601,9 @@ public class IndexIO
           serializerUtils.writeString(nameBAOS, dimension);
           outParts.add(ByteBuffer.wrap(nameBAOS.toByteArray()));
 
-          GenericIndexed<String> dictionary = GenericIndexed.read(
-              dimBuffer, GenericIndexed.STRING_STRATEGY
+          DimensionType dimType = DimensionSchema.fromString(dimension).getType();
+          GenericIndexed<Comparable> dictionary = GenericIndexed.read(
+              dimBuffer, GenericIndexed.getObjectStrategy(dimType)
           );
 
           if (dictionary.size() == 0) {
@@ -647,7 +651,7 @@ public class IndexIO
 
                 dictionary = GenericIndexed.fromIterable(
                     Iterables.concat(nullList, dictionary),
-                    GenericIndexed.STRING_STRATEGY
+                    GenericIndexed.getObjectStrategy(dimType)
                 );
 
                 bitmaps = GenericIndexed.fromIterable(

@@ -32,6 +32,8 @@ import io.druid.segment.ColumnSelectorFactory;
 import io.druid.segment.DimensionSelector;
 import io.druid.segment.data.Indexed;
 import io.druid.segment.data.IndexedInts;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 
 import java.util.BitSet;
 import java.util.Iterator;
@@ -42,31 +44,33 @@ import java.util.List;
 public class ExtractionFilter implements Filter
 {
   private final String dimension;
-  private final String value;
+  private final DimensionType dimType;
+  private final Comparable value;
   private final ExtractionFn fn;
 
-  public ExtractionFilter(String dimension, String value, ExtractionFn fn)
+  public ExtractionFilter(String dimension, Comparable value, ExtractionFn fn)
   {
     this.dimension = dimension;
-    this.value = Strings.nullToEmpty(value);
+    this.dimType = DimensionSchema.fromString(dimension).getType();
+    this.value = value == null ? dimType.getNullReplacement() : value;
     this.fn = fn;
   }
 
   private List<Filter> makeFilters(BitmapIndexSelector selector)
   {
-    Indexed<String> allDimVals = selector.getDimensionValues(dimension);
+    Indexed<Comparable> allDimVals = selector.getDimensionValues(dimension);
     final List<Filter> filters = Lists.newArrayList();
     if (allDimVals == null) {
-      allDimVals = new Indexed<String>()
+      allDimVals = new Indexed<Comparable>()
       {
         @Override
-        public Iterator<String> iterator()
+        public Iterator<Comparable> iterator()
         {
           return null;
         }
 
         @Override
-        public Class<? extends String> getClazz()
+        public Class<? extends Comparable> getClazz()
         {
           return null;
         }
@@ -75,10 +79,10 @@ public class ExtractionFilter implements Filter
         public int size() { return 1; }
 
         @Override
-        public String get(int index) { return null;}
+        public Comparable get(int index) { return null;}
 
         @Override
-        public int indexOf(String value)
+        public int indexOf(Comparable value)
         {
           return 0;
         }
@@ -86,7 +90,7 @@ public class ExtractionFilter implements Filter
     }
 
     for (int i = 0; i < allDimVals.size(); i++) {
-      String dimVal = allDimVals.get(i);
+      Comparable dimVal = allDimVals.get(i);
       if (value.equals(Strings.nullToEmpty(fn.apply(dimVal)))) {
         filters.add(new SelectorFilter(dimension, dimVal));
       }
@@ -109,13 +113,15 @@ public class ExtractionFilter implements Filter
   public ValueMatcher makeMatcher(ValueMatcherFactory factory)
   {
     return factory.makeValueMatcher(
-        dimension, new Predicate<String>()
+        dimension, new Predicate<Comparable>()
         {
           @Override
-          public boolean apply(String input)
+          public boolean apply(Comparable input)
           {
             // Assuming that a null/absent/empty dimension are equivalent from the druid perspective
-            return value.equals(Strings.nullToEmpty(fn.apply(Strings.emptyToNull(input))));
+            return value.equals(Strings.nullToEmpty(fn.apply(
+                (input instanceof String) ? Strings.emptyToNull((String)input) : input)
+            ));
           }
         }
     );

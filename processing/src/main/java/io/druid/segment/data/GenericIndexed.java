@@ -23,6 +23,7 @@ import com.google.common.collect.Ordering;
 import com.google.common.primitives.Ints;
 import com.metamx.common.IAE;
 import com.metamx.common.guava.CloseQuietly;
+import io.druid.segment.dimension.DimensionType;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -31,6 +32,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Iterator;
+
+import static io.druid.segment.dimension.DimensionType.*;
 
 /**
  * A generic, flat storage mechanism.  Use static methods fromArray() or fromIterable() to construct.  If input
@@ -315,6 +318,20 @@ public class GenericIndexed<T> implements Indexed<T>
     throw new IAE("Unknown version[%s]", versionFromBuffer);
   }
 
+  public static ObjectStrategy getObjectStrategy(DimensionType type)
+  {
+    switch(type) {
+      case STRING:
+        return STRING_STRATEGY;
+      case LONG:
+        return LONG_STRATEGY;
+      case FLOAT:
+        return FLOAT_STRATEGY;
+    }
+
+    return STRING_STRATEGY;
+  }
+
   public static final ObjectStrategy<String> STRING_STRATEGY = new CacheableObjectStrategy<String>()
   {
     @Override
@@ -340,6 +357,66 @@ public class GenericIndexed<T> implements Indexed<T>
 
     @Override
     public int compare(String o1, String o2)
+    {
+      return Ordering.natural().nullsFirst().compare(o1, o2);
+    }
+  };
+
+  public static final ObjectStrategy<Float> FLOAT_STRATEGY = new CacheableObjectStrategy<Float>()
+  {
+    @Override
+    public Class<? extends Float> getClazz()
+    {
+      return Float.class;
+    }
+
+    @Override
+    public Float fromByteBuffer(final ByteBuffer buffer, final int numBytes)
+    {
+      return buffer.getFloat();
+    }
+
+    @Override
+    public byte[] toBytes(Float val)
+    {
+      if (val == null) {
+        return new byte[]{};
+      }
+      return ByteBuffer.allocate(4).putFloat(val).array();
+    }
+
+    @Override
+    public int compare(Float o1, Float o2)
+    {
+      return Ordering.natural().nullsFirst().compare(o1, o2);
+    }
+  };
+
+  public static final ObjectStrategy<Long> LONG_STRATEGY = new CacheableObjectStrategy<Long>()
+  {
+    @Override
+    public Class<? extends Long> getClazz()
+    {
+      return Long.class;
+    }
+
+    @Override
+    public Long fromByteBuffer(final ByteBuffer buffer, final int numBytes)
+    {
+      return buffer.getLong();
+    }
+
+    @Override
+    public byte[] toBytes(Long val)
+    {
+      if (val == null) {
+        return new byte[]{};
+      }
+      return ByteBuffer.allocate(8).putLong(val).array();
+    }
+
+    @Override
+    public int compare(Long o1, Long o2)
     {
       return Ordering.natural().nullsFirst().compare(o1, o2);
     }

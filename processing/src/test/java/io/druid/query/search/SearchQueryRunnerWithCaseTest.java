@@ -186,7 +186,7 @@ public class SearchQueryRunnerWithCaseTest
       Iterable<SearchHit> resultValues = result.getValue();
       for (SearchHit resultValue : resultValues) {
         String dimension = resultValue.getDimension();
-        String theValue = resultValue.getValue();
+        Comparable theValue = resultValue.getValue();
         Assert.assertTrue(
             String.format("Result had unknown dimension[%s]", dimension),
             expectedResults.containsKey(dimension)

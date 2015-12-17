@@ -34,12 +34,12 @@ public class SimpleDictionaryEncodedColumn
 {
   private final IndexedInts column;
   private final IndexedMultivalue<IndexedInts> multiValueColumn;
-  private final CachingIndexed<String> cachedLookups;
+  private final CachingIndexed<Comparable> cachedLookups;
 
   public SimpleDictionaryEncodedColumn(
       IndexedInts singleValueColumn,
       IndexedMultivalue<IndexedInts> multiValueColumn,
-      CachingIndexed<String> cachedLookups
+      CachingIndexed<Comparable> cachedLookups
   )
   {
     this.column = singleValueColumn;
@@ -72,14 +72,15 @@ public class SimpleDictionaryEncodedColumn
   }
 
   @Override
-  public String lookupName(int id)
+  public Comparable lookupName(int id)
   {
     //Empty to Null will ensure that null and empty are equivalent for extraction function
-    return Strings.emptyToNull(cachedLookups.get(id));
+    Comparable value = cachedLookups.get(id);
+    return (value instanceof String) ? Strings.emptyToNull((String)value) : value;
   }
 
   @Override
-  public int lookupId(String name)
+  public int lookupId(Comparable name)
   {
     return cachedLookups.indexOf(name);
   }

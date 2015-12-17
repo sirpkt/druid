@@ -28,13 +28,13 @@ public interface BitmapIndex
 {
   public int getCardinality();
 
-  public String getValue(int index);
+  public Comparable getValue(int index);
 
   public boolean hasNulls();
 
   public BitmapFactory getBitmapFactory();
 
-  public ImmutableBitmap getBitmap(String value);
+  public ImmutableBitmap getBitmap(Comparable value);
 
   public ImmutableBitmap getBitmap(int idx);
 }

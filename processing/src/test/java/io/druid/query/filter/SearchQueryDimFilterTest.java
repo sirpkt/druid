@@ -35,7 +35,7 @@ public class SearchQueryDimFilterTest
     SearchQueryDimFilter searchQueryDimFilter = new SearchQueryDimFilter("dim", new SearchQuerySpec()
     {
       @Override
-      public boolean accept(String dimVal)
+      public boolean accept(Comparable dimVal)
       {
         return false;
       }
@@ -50,7 +50,7 @@ public class SearchQueryDimFilterTest
     SearchQueryDimFilter searchQueryDimFilter2 = new SearchQueryDimFilter("di", new SearchQuerySpec()
     {
       @Override
-      public boolean accept(String dimVal)
+      public boolean accept(Comparable dimVal)
       {
         return false;
       }

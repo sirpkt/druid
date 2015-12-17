@@ -80,10 +80,10 @@ public class ExtractionDimFilterTest
   private final BitmapIndexSelector BITMAP_INDEX_SELECTOR = new BitmapIndexSelector()
   {
     @Override
-    public Indexed<String> getDimensionValues(String dimension)
+    public Indexed<Comparable> getDimensionValues(String dimension)
     {
       final String[] vals = DIM_VALS.get(dimension);
-      return vals == null ? null : new ArrayIndexed<String>(vals, String.class);
+      return vals == null ? null : new ArrayIndexed<Comparable>(vals, Comparable.class);
     }
 
     @Override
@@ -99,7 +99,7 @@ public class ExtractionDimFilterTest
     }
 
     @Override
-    public ImmutableBitmap getBitmapIndex(String dimension, String value)
+    public ImmutableBitmap getBitmapIndex(String dimension, Comparable value)
     {
       return "foo1".equals(value) ? foo1BitMap : null;
     }

@@ -42,7 +42,7 @@ public class MMappedIndex
   final Interval dataInterval;
   final CompressedLongsIndexedSupplier timestamps;
   final Map<String, MetricHolder> metrics;
-  final Map<String, GenericIndexed<String>> dimValueLookups;
+  final Map<String, GenericIndexed<Comparable>> dimValueLookups;
   final Map<String, VSizeIndexed> dimColumns;
   final Map<String, GenericIndexed<ImmutableBitmap>> invertedIndexes;
   final Map<String, ImmutableRTree> spatialIndexes;
@@ -54,7 +54,7 @@ public class MMappedIndex
       Interval dataInterval,
       CompressedLongsIndexedSupplier timestamps,
       Map<String, MetricHolder> metrics,
-      Map<String, GenericIndexed<String>> dimValueLookups,
+      Map<String, GenericIndexed<Comparable>> dimValueLookups,
       Map<String, VSizeIndexed> dimColumns,
       Map<String, GenericIndexed<ImmutableBitmap>> invertedIndexes,
       Map<String, ImmutableRTree> spatialIndexes,
@@ -109,7 +109,7 @@ public class MMappedIndex
     return retVal;
   }
 
-  public GenericIndexed<String> getDimValueLookup(String dimension)
+  public GenericIndexed<Comparable> getDimValueLookup(String dimension)
   {
     return dimValueLookups.get(dimension);
   }

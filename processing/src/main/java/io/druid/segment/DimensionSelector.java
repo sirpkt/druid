@@ -70,7 +70,7 @@ public interface DimensionSelector
    * @param id id to lookup the field name for
    * @return the field name for the given id
    */
-  public String lookupName(int id);
+  public Comparable lookupName(int id);
 
   /**
    * The ID is the int id value of the field.
@@ -78,5 +78,5 @@ public interface DimensionSelector
    * @param name field name to look up the id for
    * @return the id for the given field name
    */
-  public int lookupId(String name);
+  public int lookupId(Comparable name);
 }

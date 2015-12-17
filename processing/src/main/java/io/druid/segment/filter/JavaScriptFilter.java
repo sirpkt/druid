@@ -51,7 +51,7 @@ public class JavaScriptFilter implements Filter
   {
     final Context cx = Context.enter();
     try {
-      final Indexed<String> dimValues = selector.getDimensionValues(dimension);
+      final Indexed<Comparable> dimValues = selector.getDimensionValues(dimension);
       ImmutableBitmap bitmap;
       if (dimValues == null) {
         bitmap = selector.getBitmapFactory().makeEmptyImmutableBitmap();
@@ -59,20 +59,20 @@ public class JavaScriptFilter implements Filter
         bitmap = selector.getBitmapFactory().union(
             FunctionalIterable.create(dimValues)
                               .filter(
-                                  new Predicate<String>()
+                                  new Predicate<Comparable>()
                                   {
                                     @Override
-                                    public boolean apply(@Nullable String input)
+                                    public boolean apply(@Nullable Comparable input)
                                     {
                                       return predicate.applyInContext(cx, input);
                                     }
                                   }
                               )
                               .transform(
-                                  new com.google.common.base.Function<String, ImmutableBitmap>()
+                                  new com.google.common.base.Function<Comparable, ImmutableBitmap>()
                                   {
                                     @Override
-                                    public ImmutableBitmap apply(@Nullable String input)
+                                    public ImmutableBitmap apply(@Nullable Comparable input)
                                     {
                                       return selector.getBitmapIndex(dimension, input);
                                     }
@@ -94,7 +94,7 @@ public class JavaScriptFilter implements Filter
     return factory.makeValueMatcher(dimension, predicate);
   }
 
-  static class JavaScriptPredicate implements Predicate<String>
+  static class JavaScriptPredicate implements Predicate<Comparable>
   {
     final ScriptableObject scope;
     final Function fnApply;
@@ -118,7 +118,7 @@ public class JavaScriptFilter implements Filter
     }
 
     @Override
-    public boolean apply(final String input)
+    public boolean apply(final Comparable input)
     {
       // one and only one context per thread
       final Context cx = Context.enter();
@@ -131,9 +131,9 @@ public class JavaScriptFilter implements Filter
 
     }
 
-    public boolean applyInContext(Context cx, String input)
+    public boolean applyInContext(Context cx, Comparable input)
     {
-      return Context.toBoolean(fnApply.call(cx, scope, scope, new String[]{input}));
+      return Context.toBoolean(fnApply.call(cx, scope, scope, new Comparable[]{input}));
     }
 
     @Override

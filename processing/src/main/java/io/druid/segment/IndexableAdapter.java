@@ -38,11 +38,11 @@ public interface IndexableAdapter
 
   Indexed<String> getMetricNames();
 
-  Indexed<String> getDimValueLookup(String dimension);
+  Indexed<Comparable> getDimValueLookup(String dimension);
 
   Iterable<Rowboat> getRows();
 
-  IndexedInts getBitmapIndex(String dimension, String value);
+  IndexedInts getBitmapIndex(String dimension, Comparable value);
 
   BitmapIndexSeeker getBitmapIndexSeeker(String dimension);
 

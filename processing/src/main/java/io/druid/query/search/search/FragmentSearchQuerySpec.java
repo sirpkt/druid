@@ -77,8 +77,12 @@ public class FragmentSearchQuerySpec implements SearchQuerySpec
   }
 
   @Override
-  public boolean accept(String dimVal)
+  public boolean accept(Comparable val)
   {
+    if (!(val instanceof String)) {
+      return false;
+    }
+    String dimVal = (String)val;
     if (dimVal == null || values == null) {
       return false;
     }

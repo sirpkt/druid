@@ -34,11 +34,11 @@ import io.druid.segment.data.IndexedInts;
 public class SelectorFilter implements Filter
 {
   private final String dimension;
-  private final String value;
+  private final Comparable value;
 
   public SelectorFilter(
       String dimension,
-      String value
+      Comparable value
   )
   {
     this.dimension = dimension;
@@ -64,7 +64,7 @@ public class SelectorFilter implements Filter
 
     // Missing columns match a null or empty string value and don't match anything else
     if (dimensionSelector == null) {
-      return new BooleanValueMatcher(Strings.isNullOrEmpty(value));
+      return new BooleanValueMatcher(value == null);
     } else {
       final int valueId = dimensionSelector.lookupId(value);
       return new ValueMatcher()

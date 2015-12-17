@@ -28,7 +28,9 @@ import io.druid.data.input.InputRow;
 import io.druid.granularity.QueryGranularity;
 import io.druid.query.aggregation.Aggregator;
 import io.druid.query.aggregation.AggregatorFactory;
+import io.druid.segment.dimension.DimensionSchema;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -110,7 +112,7 @@ public class OnheapIncrementalIndex extends IncrementalIndex<Aggregator>
   @Override
   protected DimDim makeDimDim(String dimension)
   {
-    return new OnHeapDimDim();
+    return new OnHeapDimDim(DimensionSchema.fromString(dimension));
   }
 
   @Override
@@ -243,18 +245,20 @@ public class OnheapIncrementalIndex extends IncrementalIndex<Aggregator>
     return concurrentGet(rowOffset)[aggOffset].get();
   }
 
-  private static class OnHeapDimDim implements DimDim
+  private static class OnHeapDimDim<T extends Comparable> implements DimDim<T>
   {
-    private final Map<String, Integer> falseIds;
-    private final Map<Integer, String> falseIdsReverse;
-    private volatile String[] sortedVals = null;
-    final ConcurrentMap<String, String> poorMansInterning = Maps.newConcurrentMap();
+    private final Map<T, Integer> falseIds;
+    private final Map<Integer, T> falseIdsReverse;
+    private volatile T[] sortedVals = null;
+    final ConcurrentMap<T, T> poorMansInterning = Maps.newConcurrentMap();
+    private final Class clazz;
 
-    public OnHeapDimDim()
+    public OnHeapDimDim(DimensionSchema dimensionSchema)
     {
-      BiMap<String, Integer> biMap = Maps.synchronizedBiMap(HashBiMap.<String, Integer>create());
+      BiMap<T, Integer> biMap = Maps.synchronizedBiMap(HashBiMap.<T, Integer>create());
       falseIds = biMap;
       falseIdsReverse = biMap.inverse();
+      this.clazz = dimensionSchema.getType().getClazz();
     }
 
     /**
@@ -262,24 +266,24 @@ public class OnheapIncrementalIndex extends IncrementalIndex<Aggregator>
      *
      * @see io.druid.segment.incremental.IncrementalIndexStorageAdapter.EntryHolderValueMatcherFactory#makeValueMatcher(String, String)
      */
-    public String get(String str)
+    public T get(T str)
     {
-      String prev = poorMansInterning.putIfAbsent(str, str);
+      T prev = poorMansInterning.putIfAbsent(str, str);
       return prev != null ? prev : str;
     }
 
-    public int getId(String value)
+    public int getId(T value)
     {
       final Integer id = falseIds.get(value);
       return id == null ? -1 : id;
     }
 
-    public String getValue(int id)
+    public T getValue(int id)
     {
       return falseIdsReverse.get(id);
     }
 
-    public boolean contains(String value)
+    public boolean contains(T value)
     {
       return falseIds.containsKey(value);
     }
@@ -289,20 +293,20 @@ public class OnheapIncrementalIndex extends IncrementalIndex<Aggregator>
       return falseIds.size();
     }
 
-    public synchronized int add(String value)
+    public synchronized int add(T value)
     {
       int id = falseIds.size();
       falseIds.put(value, id);
       return id;
     }
 
-    public int getSortedId(String value)
+    public int getSortedId(T value)
     {
       assertSorted();
       return Arrays.binarySearch(sortedVals, value);
     }
 
-    public String getSortedValue(int index)
+    public T getSortedValue(int index)
     {
       assertSorted();
       return sortedVals[index];
@@ -311,10 +315,10 @@ public class OnheapIncrementalIndex extends IncrementalIndex<Aggregator>
     public void sort()
     {
       if (sortedVals == null) {
-        sortedVals = new String[falseIds.size()];
+        sortedVals = (T[])Array.newInstance(this.clazz, falseIds.size());
 
         int index = 0;
-        for (String value : falseIds.keySet()) {
+        for (T value : falseIds.keySet()) {
           sortedVals[index++] = value;
         }
         Arrays.sort(sortedVals);
@@ -328,9 +332,9 @@ public class OnheapIncrementalIndex extends IncrementalIndex<Aggregator>
       }
     }
 
-    public boolean compareCannonicalValues(String s1, String s2)
+    public boolean compareCannonicalValues(T s1, T s2)
     {
-      return s1 == s2;
+      return s1.equals(s2);
     }
   }
 }

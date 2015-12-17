@@ -31,7 +31,7 @@ public interface DictionaryEncodedColumn extends Closeable
   public boolean hasMultipleValues();
   public int getSingleValueRow(int rowNum);
   public IndexedInts getMultiValueRow(int rowNum);
-  public String lookupName(int id);
-  public int lookupId(String name);
+  public Comparable lookupName(int id);
+  public int lookupId(Comparable name);
   public int getCardinality();
 }

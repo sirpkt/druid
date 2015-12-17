@@ -87,7 +87,7 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
   {
     private VERSION version = null;
     private int flags = NO_FLAGS;
-    private GenericIndexed<String> dictionary = null;
+    private GenericIndexed<Comparable> dictionary = null;
     private WritableSupplier<IndexedInts> singleValuedColumn = null;
     private WritableSupplier<IndexedMultivalue<IndexedInts>> multiValuedColumn = null;
     private BitmapSerdeFactory bitmapSerdeFactory = null;
@@ -99,7 +99,7 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
     {
     }
 
-    public Builder withDictionary(GenericIndexed<String> dictionary)
+    public Builder withDictionary(GenericIndexed<Comparable> dictionary)
     {
       this.dictionary = dictionary;
       return this;
@@ -195,7 +195,7 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
   private final BitmapSerdeFactory bitmapSerdeFactory;
   private final ByteOrder byteOrder;
 
-  private final GenericIndexed<String> dictionary;
+  private final GenericIndexed<Comparable> dictionary;
   private final WritableSupplier<IndexedInts> singleValuedColumn;
   private final WritableSupplier<IndexedMultivalue<IndexedInts>> multiValuedColumn;
   private final GenericIndexed<ImmutableBitmap> bitmaps;
@@ -230,7 +230,7 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
   private DictionaryEncodedColumnPartSerde(
       VERSION version,
       int flags,
-      GenericIndexed<String> dictionary,
+      GenericIndexed<Comparable> dictionary,
       WritableSupplier<IndexedInts> singleValuedColumn,
       WritableSupplier<IndexedMultivalue<IndexedInts>> multiValuedColumn,
       BitmapSerdeFactory bitmapSerdeFactory,
@@ -334,7 +334,7 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
 
     final boolean hasMultipleValues = Feature.MULTI_VALUE.isSet(rFlags);
 
-    final GenericIndexed<String> rDictionary = GenericIndexed.read(buffer, GenericIndexed.STRING_STRATEGY);
+    final GenericIndexed rDictionary = GenericIndexed.read(buffer, GenericIndexed.STRING_STRATEGY);
     builder.setType(ValueType.STRING);
 
     final WritableSupplier<IndexedInts> rSingleValuedColumn;

@@ -49,6 +49,8 @@ import io.druid.segment.column.ColumnCapabilities;
 import io.druid.segment.column.ColumnCapabilitiesImpl;
 import io.druid.segment.column.ValueType;
 import io.druid.segment.data.IndexedInts;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 import io.druid.segment.serde.ComplexMetricExtractor;
 import io.druid.segment.serde.ComplexMetricSerde;
 import io.druid.segment.serde.ComplexMetrics;
@@ -225,14 +227,14 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
           }
 
           @Override
-          public String lookupName(int id)
+          public Comparable lookupName(int id)
           {
             final String value = in.get().getDimension(dimension).get(id);
             return extractionFn == null ? value : extractionFn.apply(value);
           }
 
           @Override
-          public int lookupId(String name)
+          public int lookupId(Comparable name)
           {
             if (extractionFn != null) {
               throw new UnsupportedOperationException("cannot perform lookup when applying an extraction function");
@@ -417,18 +419,29 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
 
     final List<String> rowDimensions = row.getDimensions();
 
-    String[][] dims;
-    List<String[]> overflow = null;
+    Comparable[][] dims;
+    List<Comparable[]> overflow = null;
     synchronized (dimensionOrder) {
       dims = new String[dimensionOrder.size()][];
-      for (String dimension : rowDimensions) {
-        List<String> dimensionValues = row.getDimension(dimension);
+      for (final String dimension : rowDimensions) {
+        final DimensionSchema dimensionSchema = DimensionSchema.fromString(dimension);
+        final DimensionType dimensionType = dimensionSchema.getType();
+        List<Comparable> dimensionValues = Lists.transform(
+            row.getDimension(dimension),
+            new Function<String, Comparable>() {
+              @Nullable
+              @Override
+              public Comparable apply(@Nullable String s) {
+                return dimensionType.fromStringValue(s);
+              }
+            }
+        );
 
         // Set column capabilities as data is coming in
         ColumnCapabilitiesImpl capabilities = columnCapabilities.get(dimension);
         if (capabilities == null) {
           capabilities = new ColumnCapabilitiesImpl();
-          capabilities.setType(ValueType.STRING);
+          capabilities.setType(dimensionType.getType());
           columnCapabilities.put(dimension, capabilities);
         }
         if (dimensionValues.size() > 1) {
@@ -463,7 +476,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
 
     if (overflow != null) {
       // Merge overflow and non-overflow
-      String[][] newDims = new String[dims.length + overflow.size()][];
+      Comparable[][] newDims = new Comparable[dims.length + overflow.size()][];
       System.arraycopy(dims, 0, newDims, 0, dims.length);
       for (int i = 0; i < overflow.size(); ++i) {
         newDims[dims.length + i] = overflow.get(i);
@@ -504,9 +517,9 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     return getFacts().lastKey().getTimestamp();
   }
 
-  private String[] getDimVals(final DimDim dimLookup, final List<String> dimValues)
+  private Comparable[] getDimVals(final DimDim dimLookup, final List<Comparable> dimValues)
   {
-    final String[] retVal = new String[dimValues.size()];
+    final Comparable[] retVal = new Comparable[dimValues.size()];
     if (dimValues.size() == 0) {
       // NULL VALUE
       if (!dimLookup.contains(null)) {
@@ -515,8 +528,8 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
       return null;
     }
     int count = 0;
-    for (String dimValue : dimValues) {
-      String canonicalDimValue = dimLookup.get(dimValue);
+    for (Comparable dimValue : dimValues) {
+      Comparable canonicalDimValue = dimLookup.get(dimValue);
       if (!dimLookup.contains(canonicalDimValue)) {
         dimLookup.add(dimValue);
       }
@@ -621,11 +634,11 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
                 final TimeAndDims timeAndDims = input.getKey();
                 final int rowOffset = input.getValue();
 
-                String[][] theDims = timeAndDims.getDims();
+                Comparable[][] theDims = timeAndDims.getDims();
 
                 Map<String, Object> theVals = Maps.newLinkedHashMap();
                 for (int i = 0; i < theDims.length; ++i) {
-                  String[] dim = theDims[i];
+                  Comparable[] dim = theDims[i];
                   if (dim != null && dim.length != 0) {
                     theVals.put(dimensions.get(i), dim.length == 1 ? dim[0] : Arrays.asList(dim));
                   }
@@ -671,7 +684,8 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     {
       DimDim holder = dimensions.get(dimension);
       if (holder == null) {
-        holder = new NullValueConverterDimDim(makeDimDim(dimension));
+        DimensionSchema dimSchema = DimensionSchema.fromString(dimension);
+        holder = new NullValueConverterDimDim(makeDimDim(dimension), dimSchema.getType());
         dimensions.put(dimension, holder);
       } else {
         throw new ISE("dimension[%s] already existed even though add() was called!?", dimension);
@@ -685,63 +699,65 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     }
   }
 
-  static interface DimDim
+  static interface DimDim<T extends Comparable>
   {
-    public String get(String value);
+    public T get(T value);
 
-    public int getId(String value);
+    public int getId(T value);
 
-    public String getValue(int id);
+    public T getValue(int id);
 
-    public boolean contains(String value);
+    public boolean contains(T value);
 
     public int size();
 
-    public int add(String value);
+    public int add(T value);
 
-    public int getSortedId(String value);
+    public int getSortedId(T value);
 
-    public String getSortedValue(int index);
+    public T getSortedValue(int index);
 
     public void sort();
 
-    public boolean compareCannonicalValues(String s1, String s2);
+    public boolean compareCannonicalValues(T s1, T s2);
   }
 
   /**
    * implementation which converts null strings to empty strings and vice versa.
    */
-  static class NullValueConverterDimDim implements DimDim
+  static class NullValueConverterDimDim<T extends Comparable> implements DimDim<T>
   {
-    private final DimDim delegate;
+    private final DimDim<T> delegate;
+    private final DimensionType type;
 
-    NullValueConverterDimDim(DimDim delegate)
+    NullValueConverterDimDim(DimDim delegate, DimensionType type)
     {
       this.delegate = delegate;
+      this.type = type;
     }
 
     @Override
-    public String get(String value)
+    public T get(T value)
     {
-      return delegate.get(Strings.nullToEmpty(value));
+      return delegate.get(replaceNull(value));
     }
 
     @Override
-    public int getId(String value)
+    public int getId(T value)
     {
-      return delegate.getId(Strings.nullToEmpty(value));
+      return delegate.getId(replaceNull(value));
     }
 
     @Override
-    public String getValue(int id)
+    public T getValue(int id)
     {
-      return Strings.emptyToNull(delegate.getValue(id));
+      return replaceNull(delegate.getValue(id));
     }
 
     @Override
-    public boolean contains(String value)
+    public boolean contains(T value)
     {
-      return delegate.contains(Strings.nullToEmpty(value));
+      return delegate.contains(replaceNull(value));
     }
 
     @Override
@@ -751,21 +767,21 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     }
 
     @Override
-    public int add(String value)
+    public int add(T value)
     {
-      return delegate.add(Strings.nullToEmpty(value));
+      return delegate.add(replaceNull(value));
     }
 
     @Override
-    public int getSortedId(String value)
+    public int getSortedId(T value)
     {
-      return delegate.getSortedId(Strings.nullToEmpty(value));
+      return delegate.getSortedId(replaceNull(value));
     }
 
     @Override
-    public String getSortedValue(int index)
+    public T getSortedValue(int index)
     {
-      return Strings.emptyToNull(delegate.getSortedValue(index));
+      return replaceNull(delegate.getSortedValue(index));
     }
 
     @Override
@@ -775,20 +791,29 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     }
 
     @Override
-    public boolean compareCannonicalValues(String s1, String s2)
+    public boolean compareCannonicalValues(T s1, T s2)
     {
-      return delegate.compareCannonicalValues(Strings.nullToEmpty(s1), Strings.nullToEmpty(s2));
+      return delegate.compareCannonicalValues(replaceNull(s1), replaceNull(s2));
+    }
+
+    private T replaceNull(T val)
+    {
+      if(val == null) {
+        val = (T)type.getNullReplacement();
+      }
+
+      return val;
     }
   }
 
   static class TimeAndDims implements Comparable<TimeAndDims>
   {
     private final long timestamp;
-    private final String[][] dims;
+    private final Comparable[][] dims;
 
     TimeAndDims(
         long timestamp,
-        String[][] dims
+        Comparable[][] dims
     )
     {
       this.timestamp = timestamp;
@@ -800,7 +825,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
       return timestamp;
     }
 
-    String[][] getDims()
+    Comparable[][] getDims()
     {
       return dims;
     }
@@ -816,8 +841,8 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
 
       int index = 0;
       while (retVal == 0 && index < dims.length) {
-        String[] lhsVals = dims[index];
-        String[] rhsVals = rhs.dims[index];
+        Comparable[] lhsVals = dims[index];
+        Comparable[] rhsVals = rhs.dims[index];
 
         if (lhsVals == null) {
           if (rhsVals == null) {
@@ -850,10 +875,10 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
       return "TimeAndDims{" +
              "timestamp=" + new DateTime(timestamp) +
              ", dims=" + Lists.transform(
-          Arrays.asList(dims), new Function<String[], Object>()
+          Arrays.asList(dims), new Function<Comparable[], Object>()
           {
             @Override
-            public Object apply(@Nullable String[] input)
+            public Object apply(@Nullable Comparable[] input)
             {
               if (input == null || input.length == 0) {
                 return Arrays.asList("null");

@@ -150,13 +150,13 @@ public class CardinalityAggregatorTest
     }
 
     @Override
-    public String lookupName(int i)
+    public Comparable lookupName(int i)
     {
       return lookup.get(i);
     }
 
     @Override
-    public int lookupId(String s)
+    public int lookupId(Comparable s)
     {
       return ids.get(s);
     }

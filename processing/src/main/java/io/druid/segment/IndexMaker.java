@@ -70,6 +70,8 @@ import io.druid.segment.data.IndexedInts;
 import io.druid.segment.data.IndexedIterable;
 import io.druid.segment.data.VSizeIndexed;
 import io.druid.segment.data.VSizeIndexedInts;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 import io.druid.segment.incremental.IncrementalIndex;
 import io.druid.segment.incremental.IncrementalIndexAdapter;
 import io.druid.segment.serde.ColumnPartSerde;
@@ -517,7 +519,7 @@ public class IndexMaker
     );
 
     final Map<String, Integer> dimIndexes = Maps.newHashMap();
-    final Map<String, Iterable<String>> dimensionValuesLookup = Maps.newHashMap();
+    final Map<String, Iterable<Comparable>> dimensionValuesLookup = Maps.newHashMap();
     final ArrayList<Map<String, IntBuffer>> dimConversions = Lists.newArrayListWithCapacity(adapters.size());
     final Set<String> skippedDimensions = Sets.newHashSet();
     final List<IntBuffer> rowNumConversions = Lists.newArrayListWithCapacity(adapters.size());
@@ -585,7 +587,7 @@ public class IndexMaker
       final List<Map<String, IntBuffer>> dimConversions,
       final Map<String, Integer> dimIndexes,
       final Set<String> skippedDimensions,
-      final Map<String, Iterable<String>> dimensionValuesLookup
+      final Map<String, Iterable<Comparable>> dimensionValuesLookup
   )
   {
     final String section = "setup dimension conversions";
@@ -598,15 +600,16 @@ public class IndexMaker
     int dimIndex = 0;
     for (String dimension : mergedDimensions) {
       dimIndexes.put(dimension, dimIndex++);
+      final DimensionType dimType = DimensionSchema.fromString(dimension).getType();
 
       // lookups for all dimension values of this dimension
-      final List<Indexed<String>> dimValueLookups = Lists.newArrayListWithCapacity(adapters.size());
+      final List<Indexed<Comparable>> dimValueLookups = Lists.newArrayListWithCapacity(adapters.size());
 
       // each converter converts dim values of this dimension to global dictionary
       final DimValueConverter[] converters = new DimValueConverter[adapters.size()];
 
       for (int i = 0; i < adapters.size(); i++) {
-        Indexed<String> dimValues = adapters.get(i).getDimValueLookup(dimension);
+        Indexed<Comparable> dimValues = adapters.get(i).getDimValueLookup(dimension);
         if (!IndexMerger.isNullColumn(dimValues)) {
           dimValueLookups.add(dimValues);
           converters[i] = new DimValueConverter(dimValues);
@@ -614,33 +617,33 @@ public class IndexMaker
       }
 
       // sort all dimension values and treat all null values as empty strings
-      final Iterable<String> dimensionValues = CombiningIterable.createSplatted(
+      final Iterable<Comparable> dimensionValues = CombiningIterable.createSplatted(
           Iterables.transform(
               dimValueLookups,
-              new Function<Indexed<String>, Iterable<String>>()
+              new Function<Indexed<Comparable>, Iterable<Comparable>>()
               {
                 @Override
-                public Iterable<String> apply(Indexed<String> indexed)
+                public Iterable<Comparable> apply(Indexed<Comparable> indexed)
                 {
                   return Iterables.transform(
                       indexed,
-                      new Function<String, String>()
+                      new Function<Comparable, Comparable>()
                       {
                         @Override
-                        public String apply(@Nullable String input)
+                        public Comparable apply(@Nullable Comparable input)
                         {
-                          return (input == null) ? "" : input;
+                          return (input == null) ? dimType.getNullReplacement() : input;
                         }
                       }
                   );
                 }
               }
           ),
-          Ordering.<String>natural()
+          Ordering.natural()
       );
 
       int cardinality = 0;
-      for (String value : dimensionValues) {
+      for (Comparable value : dimensionValues) {
         for (int i = 0; i < adapters.size(); i++) {
           DimValueConverter converter = converters[i];
           if (converter != null) {
@@ -828,7 +831,7 @@ public class IndexMaker
       final Set<String> skippedDimensions,
       final Iterable<Rowboat> theRows,
       final Map<String, ColumnCapabilitiesImpl> columnCapabilities,
-      final Map<String, Iterable<String>> dimensionValuesLookup,
+      final Map<String, Iterable<Comparable>> dimensionValuesLookup,
       final List<IntBuffer> rowNumConversions,
       final IndexSpec indexSpec
   ) throws IOException
@@ -897,7 +900,7 @@ public class IndexMaker
       final int dimIndex,
       final String dimension,
       final Map<String, ColumnCapabilitiesImpl> columnCapabilities,
-      final Map<String, Iterable<String>> dimensionValuesLookup,
+      final Map<String, Iterable<Comparable>> dimensionValuesLookup,
       final List<IntBuffer> rowNumConversions,
       final BitmapSerdeFactory bitmapSerdeFactory,
       final CompressedObjectStrategy.CompressionStrategy compressionStrategy
@@ -950,10 +953,11 @@ public class IndexMaker
       rowCount++;
     }
 
-    final Iterable<String> dimensionValues = dimensionValuesLookup.get(dimension);
-    GenericIndexed<String> dictionary = GenericIndexed.fromIterable(
+    final DimensionType dimType = DimensionSchema.fromString(dimension).getType();
+    final Iterable<Comparable> dimensionValues = dimensionValuesLookup.get(dimension);
+    GenericIndexed<Comparable> dictionary = GenericIndexed.fromIterable(
         dimensionValues,
-        GenericIndexed.STRING_STRATEGY
+        GenericIndexed.getObjectStrategy(dimType)
     );
     boolean bumpDictionary = false;
 
@@ -967,8 +971,8 @@ public class IndexMaker
           log.info("Dimension[%s] has no null value in the dictionary, expanding...", dimension);
 
           dictionary = GenericIndexed.fromIterable(
-              Iterables.concat(Collections.<String>singleton(null), dimensionValues),
-              GenericIndexed.STRING_STRATEGY
+              Iterables.concat(Collections.<Comparable>singleton(null), dimensionValues),
+              GenericIndexed.getObjectStrategy(dimType)
           );
 
           final int dictionarySize = dictionary.size();
@@ -1047,7 +1051,7 @@ public class IndexMaker
 
           dictionary = GenericIndexed.fromIterable(
               Iterables.concat(nullList, dimensionValues),
-              GenericIndexed.STRING_STRATEGY
+              GenericIndexed.getObjectStrategy(dimType)
           );
           multiValCol = null;
           singleValCol = new NullsAtZeroConvertingIntList(vals, false);
@@ -1076,7 +1080,7 @@ public class IndexMaker
 
     // Make bitmap indexes
     List<MutableBitmap> mutableBitmaps = Lists.newArrayList();
-    for (String dimVal : dimensionValues) {
+    for (Comparable dimVal : dimensionValues) {
       List<Iterable<Integer>> convertedInverteds = Lists.newArrayListWithCapacity(adapters.size());
       for (int j = 0; j < adapters.size(); ++j) {
         convertedInverteds.add(
@@ -1174,10 +1178,10 @@ public class IndexMaker
     }
 
     int dimValIndex = 0;
-    for (String dimVal : dimensionValuesLookup.get(dimension)) {
+    for (Comparable dimVal : dimensionValuesLookup.get(dimension)) {
       if (hasSpatialIndexes) {
-        if (dimVal != null && !dimVal.isEmpty()) {
-          List<String> stringCoords = Lists.newArrayList(SPLITTER.split(dimVal));
+        if (dimVal != null && !((String)dimVal).isEmpty()) {
+          List<String> stringCoords = Lists.newArrayList(SPLITTER.split((String)dimVal));
           float[] coords = new float[stringCoords.size()];
           for (int j = 0; j < coords.length; j++) {
             coords[j] = Float.valueOf(stringCoords.get(j));
@@ -1499,13 +1503,13 @@ public class IndexMaker
 
   private static class DimValueConverter
   {
-    private final Indexed<String> dimSet;
+    private final Indexed<Comparable> dimSet;
     private final IntBuffer conversionBuf;
     private int currIndex;
-    private String lastVal = null;
+    private Comparable lastVal = null;
 
     DimValueConverter(
-        Indexed<String> dimSet
+        Indexed<Comparable> dimSet
     )
     {
       this.dimSet = dimSet;
@@ -1516,7 +1520,7 @@ public class IndexMaker
       this.currIndex = 0;
     }
 
-    public void convert(String value, int index)
+    public void convert(Comparable value, int index)
     {
       if (dimSet.size() == 0) {
         return;
@@ -1527,7 +1531,7 @@ public class IndexMaker
         }
         return;
       }
-      String currValue = dimSet.get(currIndex);
+      Comparable currValue = dimSet.get(currIndex);
 
       while (currValue == null) {
         conversionBuf.position(conversionBuf.position() + 1);

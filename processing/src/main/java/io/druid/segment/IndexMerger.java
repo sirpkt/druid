@@ -59,19 +59,9 @@ import io.druid.segment.column.BitmapIndexSeeker;
 import io.druid.segment.column.ColumnCapabilities;
 import io.druid.segment.column.ColumnCapabilitiesImpl;
 import io.druid.segment.column.ValueType;
-import io.druid.segment.data.BitmapSerdeFactory;
-import io.druid.segment.data.ByteBufferWriter;
-import io.druid.segment.data.CompressedLongsSupplierSerializer;
-import io.druid.segment.data.CompressedObjectStrategy;
-import io.druid.segment.data.GenericIndexed;
-import io.druid.segment.data.GenericIndexedWriter;
-import io.druid.segment.data.IOPeon;
-import io.druid.segment.data.Indexed;
-import io.druid.segment.data.IndexedInts;
-import io.druid.segment.data.IndexedIterable;
-import io.druid.segment.data.IndexedRTree;
-import io.druid.segment.data.TmpFileIOPeon;
-import io.druid.segment.data.VSizeIndexedWriter;
+import io.druid.segment.data.*;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 import io.druid.segment.incremental.IncrementalIndex;
 import io.druid.segment.incremental.IncrementalIndexAdapter;
 import io.druid.segment.serde.ComplexMetricColumnSerializer;
@@ -556,37 +546,39 @@ public class IndexMerger
     }
 
     for (String dimension : mergedDimensions) {
-      final GenericIndexedWriter<String> writer = new GenericIndexedWriter<String>(
-          ioPeon, dimension, GenericIndexed.STRING_STRATEGY
+      final GenericIndexedWriter writer = new GenericIndexedWriter(
+          ioPeon, dimension, GenericIndexed.getObjectStrategy(DimensionSchema.fromString(dimension).getType())
       );
       writer.open();
 
-      List<Indexed<String>> dimValueLookups = Lists.newArrayListWithCapacity(indexes.size());
+      List<Indexed<Comparable>> dimValueLookups = Lists.newArrayListWithCapacity(indexes.size());
       DimValueConverter[] converters = new DimValueConverter[indexes.size()];
       for (int i = 0; i < indexes.size(); i++) {
-        Indexed<String> dimValues = indexes.get(i).getDimValueLookup(dimension);
+        Indexed<Comparable> dimValues = indexes.get(i).getDimValueLookup(dimension);
         if (!isNullColumn(dimValues)) {
           dimValueLookups.add(dimValues);
           converters[i] = new DimValueConverter(dimValues);
         }
       }
 
-      Iterable<String> dimensionValues = CombiningIterable.createSplatted(
+      final DimensionType dimType = DimensionSchema.fromString(dimension).getType();
+
+      Iterable<Comparable> dimensionValues = CombiningIterable.createSplatted(
           Iterables.transform(
               dimValueLookups,
-              new Function<Indexed<String>, Iterable<String>>()
+              new Function<Indexed<Comparable>, Iterable<Comparable>>()
               {
                 @Override
-                public Iterable<String> apply(@Nullable Indexed<String> indexed)
+                public Iterable<Comparable> apply(@Nullable Indexed<Comparable> indexed)
                 {
                   return Iterables.transform(
                       indexed,
-                      new Function<String, String>()
+                      new Function<Comparable, Comparable>()
                       {
                         @Override
-                        public String apply(@Nullable String input)
+                        public Comparable apply(@Nullable Comparable input)
                         {
-                          return (input == null) ? "" : input;
+                          return (input == null) ? dimType.getNullReplacement() : input;
                         }
                       }
                   );
@@ -594,12 +586,12 @@ public class IndexMerger
               }
           )
           ,
-          Ordering.<String>natural().nullsFirst()
+          Ordering.natural().nullsFirst()
       );
 
       int count = 0;
-      for (String value : dimensionValues) {
-        value = value == null ? "" : value;
+      for (Comparable value : dimensionValues) {
+        value = value == null ? dimType.getNullReplacement() : value;
         writer.write(value);
 
         for (int i = 0; i < indexes.size(); i++) {
@@ -1004,15 +996,15 @@ public class IndexMerger
 
   private static class DimValueConverter
   {
-    private final Indexed<String> dimSet;
+    private final Indexed<Comparable> dimSet;
     private final IntBuffer conversionBuf;
 
     private int currIndex;
-    private String lastVal = null;
-    private String currValue;
+    private Comparable lastVal = null;
+    private Comparable currValue;
 
     DimValueConverter(
-        Indexed<String> dimSet
+        Indexed<Comparable> dimSet
     )
     {
       this.dimSet = dimSet;
@@ -1022,7 +1014,7 @@ public class IndexMerger
       currValue = null;
     }
 
-    public void convert(String value, int index)
+    public void convert(Comparable value, int index)
     {
       if (dimSet.size() == 0) {
         return;
@@ -1288,12 +1280,12 @@ public class IndexMerger
     }
   }
 
-  static boolean isNullColumn(Iterable<String> dimValues)
+  static boolean isNullColumn(Iterable<Comparable> dimValues)
   {
     if (dimValues == null) {
       return true;
     }
-    for (String val : dimValues) {
+    for (Comparable val : dimValues) {
       if (val != null) {
         return false;
       }

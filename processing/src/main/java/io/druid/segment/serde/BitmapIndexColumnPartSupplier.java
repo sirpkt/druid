@@ -31,12 +31,12 @@ public class BitmapIndexColumnPartSupplier implements Supplier<BitmapIndex>
 {
   private final BitmapFactory bitmapFactory;
   private final GenericIndexed<ImmutableBitmap> bitmaps;
-  private final GenericIndexed<String> dictionary;
+  private final GenericIndexed<Comparable> dictionary;
 
   public BitmapIndexColumnPartSupplier(
       BitmapFactory bitmapFactory,
       GenericIndexed<ImmutableBitmap> bitmaps,
-      GenericIndexed<String> dictionary
+      GenericIndexed<Comparable> dictionary
   )
   {
     this.bitmapFactory = bitmapFactory;
@@ -56,7 +56,7 @@ public class BitmapIndexColumnPartSupplier implements Supplier<BitmapIndex>
       }
 
       @Override
-      public String getValue(int index)
+      public Comparable getValue(int index)
       {
         return dictionary.get(index);
       }
@@ -74,7 +74,7 @@ public class BitmapIndexColumnPartSupplier implements Supplier<BitmapIndex>
       }
 
       @Override
-      public ImmutableBitmap getBitmap(String value)
+      public ImmutableBitmap getBitmap(Comparable value)
       {
         final int index = dictionary.indexOf(value);
 

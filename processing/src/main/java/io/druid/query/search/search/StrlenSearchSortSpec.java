@@ -36,7 +36,7 @@ public class StrlenSearchSortSpec implements SearchSortSpec
       @Override
       public int compare(SearchHit s, SearchHit s1)
       {
-        int res = s.getValue().length() - s1.getValue().length();
+        int res = ((String)s.getValue()).length() - ((String)s1.getValue()).length();
         if (res == 0) {
           return (s.getValue().compareTo(s1.getValue()));
         }

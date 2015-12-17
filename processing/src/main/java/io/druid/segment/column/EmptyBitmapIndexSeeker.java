@@ -26,7 +26,7 @@ public class EmptyBitmapIndexSeeker implements BitmapIndexSeeker
 {
 
   @Override
-  public IndexedInts seek(String value)
+  public IndexedInts seek(Comparable value)
   {
     return new EmptyIndexedInts();
   }

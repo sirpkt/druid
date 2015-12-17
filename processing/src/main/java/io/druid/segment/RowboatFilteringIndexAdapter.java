@@ -65,7 +65,7 @@ public class RowboatFilteringIndexAdapter implements IndexableAdapter
   }
 
   @Override
-  public Indexed<String> getDimValueLookup(String dimension)
+  public Indexed<Comparable> getDimValueLookup(String dimension)
   {
     return baseAdapter.getDimValueLookup(dimension);
   }
@@ -77,7 +77,7 @@ public class RowboatFilteringIndexAdapter implements IndexableAdapter
   }
 
   @Override
-  public IndexedInts getBitmapIndex(String dimension, String value)
+  public IndexedInts getBitmapIndex(String dimension, Comparable value)
   {
     return baseAdapter.getBitmapIndex(dimension, value);
   }

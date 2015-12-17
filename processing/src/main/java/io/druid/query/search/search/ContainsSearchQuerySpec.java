@@ -47,7 +47,7 @@ public class ContainsSearchQuerySpec implements SearchQuerySpec
   }
 
   @JsonProperty
-  public String getValue()
+  public Comparable getValue()
   {
     return value;
   }
@@ -59,15 +59,20 @@ public class ContainsSearchQuerySpec implements SearchQuerySpec
   }
 
   @Override
-  public boolean accept(String dimVal)
+  public boolean accept(Comparable dimVal)
   {
-    if (dimVal == null || value == null) {
+    if (!(dimVal instanceof String))
+    {
+      return false;
+    }
+    String strDimVal = (String)dimVal;
+    if (strDimVal == null || value == null) {
       return false;
     }
     if (caseSensitive) {
-      return dimVal.contains(value);
+      return strDimVal.contains(value);
     }
-    return org.apache.commons.lang.StringUtils.containsIgnoreCase(dimVal, value);
+    return org.apache.commons.lang.StringUtils.containsIgnoreCase(strDimVal, value);
   }
 
   @Override

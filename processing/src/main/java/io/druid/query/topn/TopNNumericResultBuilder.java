@@ -99,7 +99,7 @@ public class TopNNumericResultBuilder implements TopNResultBuilder
         int retVal = metricComparator.compare(d1.getTopNMetricVal(), d2.getTopNMetricVal());
 
         if (retVal == 0) {
-          retVal = dimNameComparator.compare(d1.getDimName(), d2.getDimName());
+          retVal = d1.getDimName().compareTo(d2.getDimName());
         }
 
         return retVal;
@@ -114,7 +114,7 @@ public class TopNNumericResultBuilder implements TopNResultBuilder
 
   @Override
   public TopNNumericResultBuilder addEntry(
-      String dimName,
+      Comparable dimName,
       Object dimValIndex,
       Object[] metricVals
   )
@@ -227,7 +227,7 @@ public class TopNNumericResultBuilder implements TopNResultBuilder
             int retVal = metricComparator.compare(d2.getTopNMetricVal(), d1.getTopNMetricVal());
 
             if (retVal == 0) {
-              retVal = dimNameComparator.compare(d1.getDimName(), d2.getDimName());
+              retVal = d1.getDimName().compareTo(d2.getDimName());
             }
 
             return retVal;

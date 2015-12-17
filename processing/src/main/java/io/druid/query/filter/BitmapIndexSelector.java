@@ -28,9 +28,9 @@ import io.druid.segment.data.Indexed;
  */
 public interface BitmapIndexSelector
 {
-  public Indexed<String> getDimensionValues(String dimension);
+  public Indexed<Comparable> getDimensionValues(String dimension);
   public int getNumRows();
   public BitmapFactory getBitmapFactory();
-  public ImmutableBitmap getBitmapIndex(String dimension, String value);
+  public ImmutableBitmap getBitmapIndex(String dimension, Comparable value);
   public ImmutableRTree getSpatialIndex(String dimension);
 }

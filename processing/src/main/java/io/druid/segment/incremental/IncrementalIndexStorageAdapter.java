@@ -48,6 +48,7 @@ import io.druid.segment.column.ColumnCapabilities;
 import io.druid.segment.data.Indexed;
 import io.druid.segment.data.IndexedInts;
 import io.druid.segment.data.ListIndexed;
+import io.druid.segment.dimension.DimensionType;
 import io.druid.segment.filter.BooleanValueMatcher;
 import io.druid.segment.serde.ComplexMetricSerde;
 import io.druid.segment.serde.ComplexMetrics;
@@ -205,10 +206,10 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
               {
                 cursorMap = index.getSubMap(
                     new IncrementalIndex.TimeAndDims(
-                        timeStart, new String[][]{}
+                        timeStart, new Comparable[][]{}
                     ),
                     new IncrementalIndex.TimeAndDims(
-                        Math.min(actualInterval.getEndMillis(), gran.next(input)), new String[][]{}
+                        Math.min(actualInterval.getEndMillis(), gran.next(input)), new Comparable[][]{}
                     )
                 );
                 time = gran.toDateTime(input);
@@ -317,9 +318,9 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                   {
                     final ArrayList<Integer> vals = Lists.newArrayList();
                     if (dimIndex < currEntry.getKey().getDims().length) {
-                      final String[] dimVals = currEntry.getKey().getDims()[dimIndex];
+                      final Comparable[] dimVals = currEntry.getKey().getDims()[dimIndex];
                       if (dimVals != null) {
-                        for (String dimVal : dimVals) {
+                        for (Comparable dimVal : dimVals) {
                           int id = dimValLookup.getId(dimVal);
                           if (id < maxId) {
                             vals.add(id);
@@ -328,12 +329,15 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                       }
                     }
                     // check for null entry
+                    // now, null is eliminated at ingestion process so following code has no meaning
+                    /*
                     if (vals.isEmpty() && dimValLookup.contains(null)) {
                       int id = dimValLookup.getId(null);
                       if (id < maxId) {
                         vals.add(id);
                       }
                     }
+                    */
 
                     return new IndexedInts()
                     {
@@ -376,15 +380,15 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                   }
 
                   @Override
-                  public String lookupName(int id)
+                  public Comparable lookupName(int id)
                   {
-                    final String value = dimValLookup.getValue(id);
+                    final Comparable value = dimValLookup.getValue(id);
                     return extractionFn == null ? value : extractionFn.apply(value);
 
                   }
 
                   @Override
-                  public int lookupId(String name)
+                  public int lookupId(Comparable name)
                   {
                     if (extractionFn != null) {
                       throw new UnsupportedOperationException(
@@ -526,12 +530,12 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                         return null;
                       }
 
-                      String[][] dims = key.getDims();
+                      Comparable[][] dims = key.getDims();
                       if (dimensionIndex >= dims.length) {
                         return null;
                       }
 
-                      final String[] dimVals = dims[dimensionIndex];
+                      final Comparable[] dimVals = dims[dimensionIndex];
                       if (dimVals == null || dimVals.length == 0) {
                         return null;
                       }
@@ -595,15 +599,15 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
     }
 
     @Override
-    public ValueMatcher makeValueMatcher(String dimension, final String value)
+    public ValueMatcher makeValueMatcher(String dimension, final Comparable value)
     {
       Integer dimIndexObject = index.getDimensionIndex(dimension);
       if (dimIndexObject == null) {
-        return new BooleanValueMatcher(Strings.isNullOrEmpty(value));
+        return new BooleanValueMatcher(value == null);
       }
       final IncrementalIndex.DimDim dimDim = index.getDimension(dimension);
       if (!dimDim.contains(value)) {
-        if (Strings.isNullOrEmpty(value)) {
+        if (value == null) {
           final int dimIndex = dimIndexObject;
 
           return new ValueMatcher()
@@ -611,7 +615,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
             @Override
             public boolean matches()
             {
-              String[][] dims = holder.getKey().getDims();
+              Comparable[][] dims = holder.getKey().getDims();
               if (dimIndex >= dims.length || dims[dimIndex] == null) {
                 return true;
               }
@@ -623,19 +627,19 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
       }
 
       final int dimIndex = dimIndexObject;
-      final String id = dimDim.get(value);
+      final Comparable id = dimDim.get(value);
 
       return new ValueMatcher()
       {
         @Override
         public boolean matches()
         {
-          String[][] dims = holder.getKey().getDims();
+          Comparable[][] dims = holder.getKey().getDims();
           if (dimIndex >= dims.length || dims[dimIndex] == null) {
-            return Strings.isNullOrEmpty(value);
+            return value == null;
           }
 
-          for (String dimVal : dims[dimIndex]) {
+          for (Comparable dimVal : dims[dimIndex]) {
             if (dimDim.compareCannonicalValues(id, dimVal)) {
               return true;
             }
@@ -646,7 +650,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
     }
 
     @Override
-    public ValueMatcher makeValueMatcher(String dimension, final Predicate<String> predicate)
+    public ValueMatcher makeValueMatcher(String dimension, final Predicate<Comparable> predicate)
     {
       Integer dimIndexObject = index.getDimensionIndex(dimension);
       if (dimIndexObject == null) {
@@ -659,12 +663,12 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
         @Override
         public boolean matches()
         {
-          String[][] dims = holder.getKey().getDims();
+          Comparable[][] dims = holder.getKey().getDims();
           if (dimIndex >= dims.length || dims[dimIndex] == null) {
             return predicate.apply(null);
           }
 
-          for (String dimVal : dims[dimIndex]) {
+          for (Comparable dimVal : dims[dimIndex]) {
             if (predicate.apply(dimVal)) {
               return true;
             }
@@ -688,13 +692,13 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
         @Override
         public boolean matches()
         {
-          String[][] dims = holder.getKey().getDims();
+          Comparable[][] dims = holder.getKey().getDims();
           if (dimIndex >= dims.length || dims[dimIndex] == null) {
             return false;
           }
 
-          for (String dimVal : dims[dimIndex]) {
-            List<String> stringCoords = Lists.newArrayList(SPLITTER.split(dimVal));
+          for (Comparable dimVal : dims[dimIndex]) {
+            List<String> stringCoords = Lists.newArrayList(SPLITTER.split((String)dimVal));
             float[] coords = new float[stringCoords.size()];
             for (int j = 0; j < coords.length; j++) {
               coords[j] = Float.valueOf(stringCoords.get(j));

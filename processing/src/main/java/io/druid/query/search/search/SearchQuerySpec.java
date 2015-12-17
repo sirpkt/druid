@@ -33,7 +33,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 })
 public interface SearchQuerySpec
 {
-  public boolean accept(String dimVal);
+  public boolean accept(Comparable dimVal);
 
   public byte[] getCacheKey();
 }

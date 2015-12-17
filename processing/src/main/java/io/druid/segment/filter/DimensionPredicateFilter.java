@@ -37,11 +37,11 @@ import javax.annotation.Nullable;
 class DimensionPredicateFilter implements Filter
 {
   private final String dimension;
-  private final Predicate<String> predicate;
+  private final Predicate<Comparable> predicate;
 
   public DimensionPredicateFilter(
       String dimension,
-      Predicate<String> predicate
+      Predicate<Comparable> predicate
   )
   {
     this.dimension = dimension;
@@ -51,7 +51,7 @@ class DimensionPredicateFilter implements Filter
   @Override
   public ImmutableBitmap getBitmapIndex(final BitmapIndexSelector selector)
   {
-    Indexed<String> dimValues = selector.getDimensionValues(dimension);
+    Indexed<Comparable> dimValues = selector.getDimensionValues(dimension);
     if (dimValues == null || dimValues.size() == 0 || predicate == null) {
       return selector.getBitmapFactory().makeEmptyImmutableBitmap();
     }
@@ -60,10 +60,10 @@ class DimensionPredicateFilter implements Filter
         FunctionalIterable.create(dimValues)
                           .filter(predicate)
                           .transform(
-                              new Function<String, ImmutableBitmap>()
+                              new Function<Comparable, ImmutableBitmap>()
                               {
                                 @Override
-                                public ImmutableBitmap apply(@Nullable String input)
+                                public ImmutableBitmap apply(@Nullable Comparable input)
                                 {
                                   return selector.getBitmapIndex(dimension, input);
                                 }
