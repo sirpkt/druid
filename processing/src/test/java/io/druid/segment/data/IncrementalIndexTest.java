@@ -483,7 +483,7 @@ public class IncrementalIndexTest
                                             )
                                             .withDimensionsSpec(
                                                 new DimensionsSpec(
-                                                    Arrays.asList("dim0", "dim1"),
+                                                    Arrays.asList("dim0:string", "dim1:float", "dim2"),
                                                     null,
                                                     null
                                                 )
@@ -492,6 +492,6 @@ public class IncrementalIndexTest
         true,
         1000000
     );
-    Assert.assertEquals(Arrays.asList("dim0", "dim1"), incrementalIndex.getDimensions());
+    Assert.assertEquals(Arrays.asList("dim0:string", "dim1:float", "dim2"), incrementalIndex.getDimensions());
   }
 }

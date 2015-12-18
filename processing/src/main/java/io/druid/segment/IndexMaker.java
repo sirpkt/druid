@@ -957,7 +957,7 @@ public class IndexMaker
     final Iterable<Comparable> dimensionValues = dimensionValuesLookup.get(dimension);
     GenericIndexed<Comparable> dictionary = GenericIndexed.fromIterable(
         dimensionValues,
-        GenericIndexed.getObjectStrategy(dimType)
+        GenericIndexed.getObjectStrategy(dimType.getType())
     );
     boolean bumpDictionary = false;
 
@@ -972,7 +972,7 @@ public class IndexMaker
 
           dictionary = GenericIndexed.fromIterable(
               Iterables.concat(Collections.<Comparable>singleton(null), dimensionValues),
-              GenericIndexed.getObjectStrategy(dimType)
+              GenericIndexed.getObjectStrategy(dimType.getType())
           );
 
           final int dictionarySize = dictionary.size();
@@ -1051,7 +1051,7 @@ public class IndexMaker
 
           dictionary = GenericIndexed.fromIterable(
               Iterables.concat(nullList, dimensionValues),
-              GenericIndexed.getObjectStrategy(dimType)
+              GenericIndexed.getObjectStrategy(dimType.getType())
           );
           multiValCol = null;
           singleValCol = new NullsAtZeroConvertingIntList(vals, false);

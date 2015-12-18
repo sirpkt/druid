@@ -547,7 +547,7 @@ public class IndexMerger
 
     for (String dimension : mergedDimensions) {
       final GenericIndexedWriter writer = new GenericIndexedWriter(
-          ioPeon, dimension, GenericIndexed.getObjectStrategy(DimensionSchema.fromString(dimension).getType())
+          ioPeon, dimension, GenericIndexed.getObjectStrategy(DimensionSchema.fromString(dimension).getType().getType())
       );
       writer.open();
 

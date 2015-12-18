@@ -23,7 +23,7 @@ import com.google.common.collect.Ordering;
 import com.google.common.primitives.Ints;
 import com.metamx.common.IAE;
 import com.metamx.common.guava.CloseQuietly;
-import io.druid.segment.dimension.DimensionType;
+import io.druid.segment.column.ValueType;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -32,8 +32,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Iterator;
-
-import static io.druid.segment.dimension.DimensionType.*;
 
 /**
  * A generic, flat storage mechanism.  Use static methods fromArray() or fromIterable() to construct.  If input
@@ -318,7 +316,7 @@ public class GenericIndexed<T> implements Indexed<T>
     throw new IAE("Unknown version[%s]", versionFromBuffer);
   }
 
-  public static ObjectStrategy getObjectStrategy(DimensionType type)
+  public static ObjectStrategy getObjectStrategy(ValueType type)
   {
     switch(type) {
       case STRING:

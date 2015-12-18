@@ -20,6 +20,7 @@
 package io.druid.segment.data;
 
 import com.google.common.collect.Maps;
+import io.druid.segment.column.ValueType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -47,7 +48,8 @@ public class GenericIndexedTest
     serializeAndDeserialize(
         GenericIndexed.fromArray(
             new String[]{"a", "c", "b"}, GenericIndexed.STRING_STRATEGY
-        )
+        ),
+        ValueType.STRING
     ).indexOf("a");
   }
 
@@ -55,7 +57,7 @@ public class GenericIndexedTest
   public void testSanity() throws Exception
   {
     final String[] strings = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"};
-    Indexed<String> indexed = GenericIndexed.fromArray(strings, GenericIndexed.STRING_STRATEGY);
+    Indexed indexed = GenericIndexed.fromArray(strings, GenericIndexed.STRING_STRATEGY);
 
     checkBasicAPIs(strings, indexed, true);
 
@@ -69,10 +71,11 @@ public class GenericIndexedTest
   {
     final String[] strings = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"};
 
-    GenericIndexed<String> deserialized = serializeAndDeserialize(
+    GenericIndexed deserialized = serializeAndDeserialize(
         GenericIndexed.fromArray(
             strings, GenericIndexed.STRING_STRATEGY
-        )
+        ),
+        ValueType.STRING
     );
 
     checkBasicAPIs(strings, deserialized, true);
@@ -83,31 +86,64 @@ public class GenericIndexedTest
   }
 
   @Test
+  public void testSortedSerializationFloat() throws Exception
+  {
+    final Float[] floats = {1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 1.6f, 1.7f, 1.8f, 1.9f, 2.0f};
+
+    GenericIndexed deserialized = serializeAndDeserialize(
+        GenericIndexed.fromArray(
+            floats, GenericIndexed.FLOAT_STRATEGY
+        ),
+        ValueType.FLOAT
+    );
+    checkBasicAPIs(floats, deserialized, true);
+
+    Assert.assertEquals(-11, deserialized.indexOf(3.0f));
+    Assert.assertEquals(-6, deserialized.indexOf(1.55f));
+    Assert.assertEquals(-1, deserialized.indexOf(1.0f));
+  }
+
+  @Test
   public void testNotSortedSerialization() throws Exception
   {
     final String[] strings = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "k", "j", "l"};
 
-    GenericIndexed<String> deserialized = serializeAndDeserialize(
+    GenericIndexed deserialized = serializeAndDeserialize(
         GenericIndexed.fromArray(
             strings, GenericIndexed.STRING_STRATEGY
-        )
+        ),
+        ValueType.STRING
     );
     checkBasicAPIs(strings, deserialized, false);
   }
 
-  private void checkBasicAPIs(String[] strings, Indexed<String> index, boolean allowReverseLookup)
+  @Test
+  public void testNotSortedSerializationFloat() throws Exception
   {
-    Assert.assertEquals(strings.length, index.size());
-    for (int i = 0; i < strings.length; i++) {
-      Assert.assertEquals(strings[i], index.get(i));
+    final Float[] floats = {1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 1.6f, 1.7f, 1.9f, 1.8f, 2.0f};
+
+    GenericIndexed deserialized = serializeAndDeserialize(
+        GenericIndexed.fromArray(
+            floats, GenericIndexed.FLOAT_STRATEGY
+        ),
+        ValueType.FLOAT
+    );
+    checkBasicAPIs(floats, deserialized, false);
+  }
+
+  private void checkBasicAPIs(Comparable[] values, Indexed<Comparable> index, boolean allowReverseLookup)
+  {
+    Assert.assertEquals(values.length, index.size());
+    for (int i = 0; i < values.length; i++) {
+      Assert.assertEquals(values[i], index.get(i));
     }
 
     if (allowReverseLookup) {
-      HashMap<String, Integer> mixedUp = Maps.newHashMap();
-      for (int i = 0; i < strings.length; i++) {
-        mixedUp.put(strings[i], i);
+      HashMap<Comparable, Integer> mixedUp = Maps.newHashMap();
+      for (int i = 0; i < values.length; i++) {
+        mixedUp.put(values[i], i);
       }
-      for (Map.Entry<String, Integer> entry : mixedUp.entrySet()) {
+      for (Map.Entry<Comparable, Integer> entry : mixedUp.entrySet()) {
         Assert.assertEquals(entry.getValue().intValue(), index.indexOf(entry.getKey()));
       }
     } else {
@@ -121,7 +157,7 @@ public class GenericIndexedTest
     }
   }
 
-  private GenericIndexed<String> serializeAndDeserialize(GenericIndexed<String> indexed) throws IOException
+  private GenericIndexed serializeAndDeserialize(GenericIndexed indexed, ValueType type) throws IOException
   {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final WritableByteChannel channel = Channels.newChannel(baos);
@@ -130,8 +166,8 @@ public class GenericIndexedTest
 
     final ByteBuffer byteBuffer = ByteBuffer.wrap(baos.toByteArray());
     Assert.assertEquals(indexed.getSerializedSize(), byteBuffer.remaining());
-    GenericIndexed<String> deserialized = GenericIndexed.read(
-        byteBuffer, GenericIndexed.STRING_STRATEGY
+    GenericIndexed deserialized = GenericIndexed.read(
+        byteBuffer, GenericIndexed.getObjectStrategy(type)
     );
     Assert.assertEquals(0, byteBuffer.remaining());
     return deserialized;

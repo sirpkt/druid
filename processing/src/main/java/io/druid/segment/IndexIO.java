@@ -490,7 +490,7 @@ public class IndexIO
         );
 
         DimensionType dimType = DimensionSchema.fromString(dimension).getType();
-        dimValueLookups.put(dimension, GenericIndexed.read(dimBuffer, GenericIndexed.getObjectStrategy(dimType)));
+        dimValueLookups.put(dimension, GenericIndexed.read(dimBuffer, GenericIndexed.getObjectStrategy(dimType.getType())));
         dimColumns.put(dimension, VSizeIndexed.readFromByteBuffer(dimBuffer));
       }
 
@@ -603,7 +603,7 @@ public class IndexIO
 
           DimensionType dimType = DimensionSchema.fromString(dimension).getType();
           GenericIndexed<Comparable> dictionary = GenericIndexed.read(
-              dimBuffer, GenericIndexed.getObjectStrategy(dimType)
+              dimBuffer, GenericIndexed.getObjectStrategy(dimType.getType())
           );
 
           if (dictionary.size() == 0) {
@@ -651,7 +651,7 @@ public class IndexIO
 
                 dictionary = GenericIndexed.fromIterable(
                     Iterables.concat(nullList, dictionary),
-                    GenericIndexed.getObjectStrategy(dimType)
+                    GenericIndexed.getObjectStrategy(dimType.getType())
                 );
 
                 bitmaps = GenericIndexed.fromIterable(
