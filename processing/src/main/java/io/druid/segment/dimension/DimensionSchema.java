@@ -64,9 +64,11 @@ public class DimensionSchema implements Comparable<DimensionSchema>
   public static DimensionSchema fromString(String schemaString)
   {
     String[] dimSchema = schemaString.split(":");
-    Preconditions.checkArgument(dimSchema.length == 2, "%s is not valid schema string", schemaString);
+    Preconditions.checkArgument(dimSchema.length == 2 || dimSchema.length == 1,
+            "%s is not valid schema string", schemaString);
 
-    return new DimensionSchema(dimSchema[0], dimSchema[1]);
+    return dimSchema.length == 2 ? new DimensionSchema(dimSchema[0], dimSchema[1]) :
+            new DimensionSchema(schemaString, "String");
   }
 
   public static List<DimensionSchema> fromStringList(List<String> schemaStringList)

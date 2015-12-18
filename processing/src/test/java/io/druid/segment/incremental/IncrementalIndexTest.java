@@ -101,14 +101,14 @@ public class IncrementalIndexTest
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy:string", "joe:string"),
+            Lists.newArrayList("billy", "joe"),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy:string", "joe:string", "joe:string"),
+            Lists.newArrayList("billy", "joe", "joe"),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );
@@ -121,7 +121,7 @@ public class IncrementalIndexTest
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy:string", "joe:string", "joe:string"),
+            Lists.newArrayList("billy", "joe", "joe"),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );
@@ -134,14 +134,14 @@ public class IncrementalIndexTest
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy:string", "joe:string"),
+            Lists.newArrayList("billy", "joe"),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy:string", "joe:string"),
+            Lists.newArrayList("billy", "joe"),
             ImmutableMap.<String, Object>of("billy", "A", "joe", "B")
         )
     );

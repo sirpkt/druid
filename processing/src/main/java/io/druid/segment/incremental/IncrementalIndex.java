@@ -422,7 +422,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     Comparable[][] dims;
     List<Comparable[]> overflow = null;
     synchronized (dimensionOrder) {
-      dims = new String[dimensionOrder.size()][];
+      dims = new Comparable[dimensionOrder.size()][];
       for (final String dimension : rowDimensions) {
         final DimensionSchema dimensionSchema = DimensionSchema.fromString(dimension);
         final DimensionType dimensionType = dimensionSchema.getType();
