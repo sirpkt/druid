@@ -48,6 +48,7 @@ import io.druid.segment.Cursor;
 import io.druid.segment.DimensionSelector;
 import io.druid.segment.StorageAdapter;
 import io.druid.segment.data.IndexedInts;
+import io.druid.segment.dimension.DimensionSchema;
 import io.druid.segment.filter.Filters;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
@@ -402,7 +403,10 @@ public class GroupByQueryEngine
                     final DimensionSelector dimSelector = dimensions.get(i);
                     final int dimVal = keyBuffer.getInt();
                     if (dimSelector.getValueCardinality() != dimVal) {
-                      theEvent.put(dimNames.get(i), dimSelector.lookupName(dimVal));
+                      theEvent.put(
+                          DimensionSchema.fromString(dimNames.get(i)).getName(),
+                          dimSelector.lookupName(dimVal)
+                      );
                     }
                   }
 

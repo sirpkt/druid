@@ -106,15 +106,15 @@ public class IncrementalIndexStorageAdapterTest
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("billy"),
+            Lists.newArrayList("billy:string"),
             ImmutableMap.<String, Object>of("billy", "hi")
         )
     );
     index.add(
         new MapBasedInputRow(
             new DateTime().minus(1).getMillis(),
-            Lists.newArrayList("sally"),
-            ImmutableMap.<String, Object>of("sally", "bo")
+            Lists.newArrayList("sally:float"),
+            ImmutableMap.<String, Object>of("sally", "1.1")
         )
     );
 
@@ -125,8 +125,8 @@ public class IncrementalIndexStorageAdapterTest
                     .setDataSource("test")
                     .setGranularity(QueryGranularity.ALL)
                     .setInterval(new Interval(0, new DateTime().getMillis()))
-                    .addDimension("billy")
-                    .addDimension("sally")
+                    .addDimension("billy:string")
+                    .addDimension("sally:float")
                     .addAggregator(new LongSumAggregatorFactory("cnt", "cnt"))
                     .build(),
         new IncrementalIndexStorageAdapter(index)
@@ -140,7 +140,7 @@ public class IncrementalIndexStorageAdapterTest
     Assert.assertEquals(ImmutableMap.of("billy", "hi", "cnt", 1L), row.getEvent());
 
     row = (MapBasedRow) results.get(1);
-    Assert.assertEquals(ImmutableMap.of("sally", "bo", "cnt", 1L), row.getEvent());
+    Assert.assertEquals(ImmutableMap.of("sally", 1.1f, "cnt", 1L), row.getEvent());
   }
 
   @Test
