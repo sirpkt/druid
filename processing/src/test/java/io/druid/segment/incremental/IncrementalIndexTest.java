@@ -146,4 +146,25 @@ public class IncrementalIndexTest
         )
     );
   }
+
+  @Test
+  public void controlTestwithType() throws IndexSizeExceededException
+  {
+    IncrementalIndex index = indexCreator.createIndex();
+    index.add(
+            new MapBasedInputRow(
+                    new DateTime().minus(1).getMillis(),
+                    Lists.newArrayList("billy:string", "joe:float"),
+                    ImmutableMap.<String, Object>of("billy", "A", "joe", "1.1")
+            )
+    );
+    index.add(
+            new MapBasedInputRow(
+                    new DateTime().minus(1).getMillis(),
+                    Lists.newArrayList("billy:string", "joe:float"),
+                    ImmutableMap.<String, Object>of("billy", "A", "joe", "1.2")
+            )
+    );
+  }
+
 }

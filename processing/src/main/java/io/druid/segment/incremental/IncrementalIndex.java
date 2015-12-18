@@ -175,10 +175,11 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
       {
         return new DimensionSelector()
         {
+          DimensionSchema dimensionSchema = DimensionSchema.fromString(dimension);
           @Override
           public IndexedInts getRow()
           {
-            final List<String> dimensionValues = in.get().getDimension(dimension);
+            final List<String> dimensionValues = in.get().getDimension(dimensionSchema.getName());
             final ArrayList<Integer> vals = Lists.newArrayList();
             if (dimensionValues != null) {
               for (int i = 0; i < dimensionValues.size(); ++i) {
@@ -229,7 +230,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
           @Override
           public Comparable lookupName(int id)
           {
-            final String value = in.get().getDimension(dimension).get(id);
+            final String value = in.get().getDimension(dimensionSchema.getName()).get(id);
             return extractionFn == null ? value : extractionFn.apply(value);
           }
 
@@ -239,7 +240,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
             if (extractionFn != null) {
               throw new UnsupportedOperationException("cannot perform lookup when applying an extraction function");
             }
-            return in.get().getDimension(dimension).indexOf(name);
+            return in.get().getDimension(dimensionSchema.getName()).indexOf(name);
           }
         };
       }
@@ -427,7 +428,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
         final DimensionSchema dimensionSchema = DimensionSchema.fromString(dimension);
         final DimensionType dimensionType = dimensionSchema.getType();
         List<Comparable> dimensionValues = Lists.transform(
-            row.getDimension(dimension),
+            row.getDimension(dimensionSchema.getName()),
             new Function<String, Comparable>() {
               @Nullable
               @Override

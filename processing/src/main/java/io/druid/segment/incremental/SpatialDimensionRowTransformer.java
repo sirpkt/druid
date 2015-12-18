@@ -33,6 +33,7 @@ import com.metamx.common.parsers.ParseException;
 import io.druid.data.input.InputRow;
 import io.druid.data.input.Row;
 import io.druid.data.input.impl.SpatialDimensionSchema;
+import io.druid.segment.dimension.DimensionSchema;
 import org.joda.time.DateTime;
 
 import java.util.Arrays;
@@ -167,8 +168,9 @@ public class SpatialDimensionRowTransformer implements Function<InputRow, InputR
     for (Map.Entry<String, SpatialDimensionSchema> entry : spatialDimensionMap.entrySet()) {
       final String spatialDimName = entry.getKey();
       final SpatialDimensionSchema spatialDim = entry.getValue();
+      final DimensionSchema spatialDimSchema = DimensionSchema.fromString(spatialDimName);
 
-      List<String> dimVals = row.getDimension(spatialDimName);
+      List<String> dimVals = row.getDimension(spatialDimSchema.getName());
       if (dimVals != null && !dimVals.isEmpty()) {
         if (dimVals.size() != 1) {
           throw new ISE("Spatial dimension value must be in an array!");
@@ -180,7 +182,8 @@ public class SpatialDimensionRowTransformer implements Function<InputRow, InputR
       } else {
         List<String> spatialDimVals = Lists.newArrayList();
         for (String dim : spatialDim.getDims()) {
-          List<String> partialDimVals = row.getDimension(dim);
+          final DimensionSchema dimSchema = DimensionSchema.fromString(dim);
+          List<String> partialDimVals = row.getDimension(dimSchema.getName());
           if (isSpatialDimValsValid(partialDimVals)) {
             spatialDimVals.addAll(partialDimVals);
           }
