@@ -481,9 +481,10 @@ public class IndexMerger
       for (String dimension : adapter.getDimensionNames()) {
         ColumnCapabilitiesImpl mergedCapabilities = columnCapabilities.get(dimension);
         ColumnCapabilities capabilities = adapter.getCapabilities(dimension);
+        DimensionType dimType = DimensionSchema.fromString(dimension).getType();
         if (mergedCapabilities == null) {
           mergedCapabilities = new ColumnCapabilitiesImpl();
-          mergedCapabilities.setType(ValueType.STRING);
+          mergedCapabilities.setType(dimType.getType());
         }
         columnCapabilities.put(dimension, mergedCapabilities.merge(capabilities));
       }
