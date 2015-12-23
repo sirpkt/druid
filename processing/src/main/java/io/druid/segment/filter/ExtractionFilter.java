@@ -91,7 +91,7 @@ public class ExtractionFilter implements Filter
 
     for (int i = 0; i < allDimVals.size(); i++) {
       Comparable dimVal = allDimVals.get(i);
-      if (value.equals(Strings.nullToEmpty(fn.apply(dimVal)))) {
+      if (value.equals(dimType.getNullReplaced(fn.apply(dimVal)))) {
         filters.add(new SelectorFilter(dimension, dimVal));
       }
     }
@@ -119,9 +119,7 @@ public class ExtractionFilter implements Filter
           public boolean apply(Comparable input)
           {
             // Assuming that a null/absent/empty dimension are equivalent from the druid perspective
-            return value.equals(Strings.nullToEmpty(fn.apply(
-                (input instanceof String) ? Strings.emptyToNull((String)input) : input)
-            ));
+            return value.equals(dimType.getNullReplaced(fn.apply(dimType.getNullRestored(input))));
           }
         }
     );
@@ -132,11 +130,11 @@ public class ExtractionFilter implements Filter
   {
     final DimensionSelector dimensionSelector = columnSelectorFactory.makeDimensionSelector(dimension, null);
     if (dimensionSelector == null) {
-      return new BooleanValueMatcher(value.equals(Strings.nullToEmpty(fn.apply(null))));
+      return new BooleanValueMatcher(value.equals(dimType.getNullReplaced(fn.apply(null))));
     } else {
       final BitSet bitSetOfIds = new BitSet(dimensionSelector.getValueCardinality());
       for (int i = 0; i < dimensionSelector.getValueCardinality(); i++) {
-        if (value.equals(Strings.nullToEmpty(fn.apply(dimensionSelector.lookupName(i))))) {
+        if (value.equals(dimType.getNullReplaced(fn.apply(dimensionSelector.lookupName(i))))) {
           bitSetOfIds.set(i);
         }
       }

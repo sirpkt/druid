@@ -26,6 +26,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.metamx.common.StringUtils;
+import io.druid.segment.dimension.DimensionType;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -45,24 +46,27 @@ public class LookupExtractionFn extends FunctionalExtraction
       final boolean retainMissingValue,
       @Nullable
       @JsonProperty("replaceMissingValueWith")
-      final String replaceMissingValueWith,
+      final Comparable replaceMissingValueWith,
       @JsonProperty("injective")
-      final boolean injective
+      final boolean injective,
+      @JsonProperty("type")
+      final String type
   )
   {
     super(
-        new Function<String, String>()
+        new Function<Comparable, Comparable>()
         {
           @Nullable
           @Override
-          public String apply(String input)
+          public Comparable apply(Comparable input)
           {
-            return lookup.apply(Strings.nullToEmpty(input));
+            return lookup.apply(DimensionType.fromString(type).getNullReplaced(input));
           }
         },
         retainMissingValue,
         replaceMissingValueWith,
-        injective
+        injective,
+        type
     );
     this.lookup = lookup;
   }
@@ -80,13 +84,20 @@ public class LookupExtractionFn extends FunctionalExtraction
 
   @Override
   @JsonProperty
-  public String getReplaceMissingValueWith() {return super.getReplaceMissingValueWith();}
+  public Comparable getReplaceMissingValueWith() {return super.getReplaceMissingValueWith();}
 
   @Override
   @JsonProperty
   public boolean isInjective()
   {
     return super.isInjective();
+  }
+
+  @Override
+  @JsonProperty
+  public String getType()
+  {
+    return super.getType();
   }
 
   @Override
@@ -97,7 +108,7 @@ public class LookupExtractionFn extends FunctionalExtraction
       outputStream.write(CACHE_TYPE_ID);
       outputStream.write(lookup.getCacheKey());
       if (getReplaceMissingValueWith() != null) {
-        outputStream.write(StringUtils.toUtf8(getReplaceMissingValueWith()));
+        outputStream.write(StringUtils.toUtf8(String.valueOf(getReplaceMissingValueWith())));
       }
       outputStream.write(isInjective() ? 1 : 0);
       outputStream.write(isRetainMissingValue() ? 1 : 0);

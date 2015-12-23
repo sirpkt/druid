@@ -59,8 +59,9 @@ public class MatchingDimExtractionFn extends DimExtractionFn
   }
 
   @Override
-  public String apply(String dimValue)
+  public Comparable apply(Comparable value)
   {
+    String dimValue = (String)value;
     dimValue = (dimValue == null) ? "" : dimValue;
     Matcher matcher = pattern.matcher(dimValue);
     return matcher.find() ? dimValue : null;

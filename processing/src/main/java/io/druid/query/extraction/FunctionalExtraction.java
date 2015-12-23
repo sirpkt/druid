@@ -22,6 +22,8 @@ package io.druid.query.extraction;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import io.druid.segment.column.ValueType;
+import io.druid.segment.dimension.DimensionType;
 
 import javax.annotation.Nullable;
 
@@ -32,9 +34,10 @@ import javax.annotation.Nullable;
 public abstract class FunctionalExtraction extends DimExtractionFn
 {
   private final boolean retainMissingValue;
-  private final String replaceMissingValueWith;
-  private final Function<String, String> extractionFunction;
+  private final Comparable replaceMissingValueWith;
+  private final Function<Comparable, Comparable> extractionFunction;
   private final ExtractionType extractionType;
+  private final DimensionType dimType;
 
   /**
    * The general constructor which handles most of the logic for extractions which can be expressed as a function of string-->string
@@ -45,16 +48,18 @@ public abstract class FunctionalExtraction extends DimExtractionFn
    * @param injective               If this function always has 1:1 renames and the domain has the same cardinality of the input, this should be true and enables optimized query paths.
    */
   public FunctionalExtraction(
-      final Function<String, String> extractionFunction,
+      final Function<Comparable, Comparable> extractionFunction,
       final boolean retainMissingValue,
-      final String replaceMissingValueWith,
-      final boolean injective
+      final Comparable replaceMissingValueWith,
+      final boolean injective,
+      final String type
   )
   {
     this.retainMissingValue = retainMissingValue;
-    this.replaceMissingValueWith = Strings.emptyToNull(replaceMissingValueWith);
+    this.dimType = DimensionType.fromString(type);
+    this.replaceMissingValueWith = dimType.getNullRestored(replaceMissingValueWith);
     Preconditions.checkArgument(
-        !(this.retainMissingValue && !Strings.isNullOrEmpty(this.replaceMissingValueWith)),
+        !(this.retainMissingValue && !(dimType.getNullReplacement() == dimType.getNullReplaced(this.replaceMissingValueWith))),
         "Cannot specify a [replaceMissingValueWith] and set [retainMissingValue] to true"
     );
 
@@ -62,25 +67,27 @@ public abstract class FunctionalExtraction extends DimExtractionFn
     // This is intended to have the absolutely fastest code path possible and not have any extra logic in the function
     if (this.retainMissingValue) {
 
-      this.extractionFunction = new Function<String, String>()
+      this.extractionFunction = new Function<Comparable, Comparable>()
       {
         @Nullable
         @Override
-        public String apply(@Nullable String dimValue)
+        public Comparable apply(@Nullable Comparable dimValue)
         {
-          final String retval = extractionFunction.apply(dimValue);
-          return Strings.isNullOrEmpty(retval) ? Strings.emptyToNull(dimValue) : retval;
+          final Comparable retval = extractionFunction.apply(dimValue);
+          return dimType.getNullReplacement() == dimType.getNullReplaced(retval) ?
+              dimType.getNullRestored(dimValue) : retval;
         }
       };
     } else {
-      this.extractionFunction = new Function<String, String>()
+      this.extractionFunction = new Function<Comparable, Comparable>()
       {
         @Nullable
         @Override
-        public String apply(@Nullable String dimValue)
+        public Comparable apply(@Nullable Comparable dimValue)
         {
-          final String retval = extractionFunction.apply(dimValue);
-          return Strings.isNullOrEmpty(retval) ? FunctionalExtraction.this.replaceMissingValueWith : retval;
+          final Comparable retval = extractionFunction.apply(dimValue);
+          return dimType.getNullReplacement() == dimType.getNullReplaced(retval)
+              ? FunctionalExtraction.this.replaceMissingValueWith : retval;
         }
       };
     }
@@ -94,7 +101,11 @@ public abstract class FunctionalExtraction extends DimExtractionFn
     return retainMissingValue;
   }
 
-  public String getReplaceMissingValueWith()
+  public String getType() {
+    return dimType.toString();
+  }
+
+  public Comparable getReplaceMissingValueWith()
   {
     return replaceMissingValueWith;
   }
@@ -105,7 +116,7 @@ public abstract class FunctionalExtraction extends DimExtractionFn
   }
 
   @Override
-  public String apply(String value)
+  public Comparable apply(Comparable value)
   {
     return extractionFunction.apply(value);
   }

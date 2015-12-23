@@ -44,7 +44,7 @@ public abstract class LookupExtractor
    * @return The lookup, or null key cannot have the lookup applied to it and should be treated as missing.
    */
   @Nullable
-  abstract String apply(@NotNull String key);
+  abstract Comparable apply(@NotNull Comparable key);
 
   /**
    * @param keys set of keys to apply lookup for each element
@@ -54,13 +54,13 @@ public abstract class LookupExtractor
    * User can override this method if there is a better way to perform bulk lookup
    */
 
-  Map<String, String> applyAll(Iterable<String> keys)
+  Map<Comparable, Comparable> applyAll(Iterable<Comparable> keys)
   {
     if (keys == null) {
       return Collections.emptyMap();
     }
-    Map<String, String> map = new HashMap<>();
-    for (String key : keys) {
+    Map<Comparable, Comparable> map = new HashMap<>();
+    for (Comparable key : keys) {
       map.put(key, apply(key));
     }
     return map;
@@ -78,7 +78,7 @@ public abstract class LookupExtractor
    * In the other hand returning a list with the null element implies user want to map the none existing value to the key null.
    */
 
-  abstract List<String> unapply(String value);
+  abstract List<Comparable> unapply(Comparable value);
 
   /**
    * @param values Iterable of values for which will perform reverse lookup
@@ -88,13 +88,13 @@ public abstract class LookupExtractor
    * User can override this method if there is a better way to perform bulk reverse lookup
    */
 
-  Map<String, List<String>> unapplyAll(Iterable<String> values)
+  Map<Comparable, List<Comparable>> unapplyAll(Iterable<Comparable> values)
   {
     if (values == null) {
       return Collections.emptyMap();
     }
-    Map<String, List<String>> map = new HashMap<>();
-    for (String value : values) {
+    Map<Comparable, List<Comparable>> map = new HashMap<>();
+    for (Comparable value : values) {
       map.put(value, unapply(value));
     }
     return map;

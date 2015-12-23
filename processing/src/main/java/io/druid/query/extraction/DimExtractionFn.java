@@ -22,14 +22,14 @@ package io.druid.query.extraction;
 public abstract class DimExtractionFn implements ExtractionFn
 {
   @Override
-  public String apply(Object value)
+  public Comparable apply(Comparable value)
   {
-    return apply(value.toString());
+    return apply(value);
   }
 
   @Override
-  public String apply(long value)
+  public Comparable apply(Object value)
   {
-    return apply(Long.toString(value));
+    return apply((Comparable)value);
   }
 }

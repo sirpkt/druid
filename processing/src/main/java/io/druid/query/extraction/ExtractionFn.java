@@ -65,11 +65,12 @@ public interface ExtractionFn
    *
    * @return a value that should be used instead of the original
    */
-  public String apply(Object value);
 
-  public String apply(String value);
+  public Comparable apply(Comparable value);
 
-  public String apply(long value);
+  public Comparable apply(Object value);
+
+//  public Comparable apply(long value);
 
   /**
    * Offers information on whether the extraction will preserve the original ordering of the values.

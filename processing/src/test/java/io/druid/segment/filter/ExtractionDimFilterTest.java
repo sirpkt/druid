@@ -119,7 +119,7 @@ public class ExtractionDimFilterTest
     }
 
     @Override
-    public String apply(String dimValue)
+    public Comparable apply(Comparable dimValue)
     {
       final String retval = EXTRACTION_VALUES.get(dimValue);
       return retval == null ? dimValue : retval;

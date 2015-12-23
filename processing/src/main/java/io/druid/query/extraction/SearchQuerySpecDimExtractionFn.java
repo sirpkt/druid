@@ -61,7 +61,7 @@ public class SearchQuerySpecDimExtractionFn extends DimExtractionFn
   }
 
   @Override
-  public String apply(String dimValue)
+  public Comparable apply(Comparable dimValue)
   {
     return searchQuerySpec.accept(dimValue) ? dimValue : null;
   }

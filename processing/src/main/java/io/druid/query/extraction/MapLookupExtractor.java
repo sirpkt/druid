@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.metamx.common.StringUtils;
+import io.druid.segment.dimension.DimensionType;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
@@ -41,37 +42,40 @@ import java.util.Map;
 @JsonTypeName("map")
 public class MapLookupExtractor extends LookupExtractor
 {
-  private final Map<String, String> map;
+  private final Map<Comparable, Comparable> map;
+  private final DimensionType dimType;
 
   @JsonCreator
   public MapLookupExtractor(
-      @JsonProperty("map") Map<String, String> map
+      @JsonProperty("map") Map<Comparable, Comparable> map,
+      @JsonProperty("type") String type
   )
   {
     this.map = Preconditions.checkNotNull(map, "map");
+    this.dimType = DimensionType.fromString(type);
   }
 
   @JsonProperty
-  public Map<String, String> getMap()
+  public Map<Comparable, Comparable> getMap()
   {
     return ImmutableMap.copyOf(map);
   }
 
   @Nullable
   @Override
-  public String apply(@NotNull String val)
+  public Comparable apply(@NotNull Comparable val)
   {
     return map.get(val);
   }
 
   @Override
-  public List<String> unapply(final String value)
+  public List<Comparable> unapply(final Comparable value)
   {
-    return Lists.newArrayList(Maps.filterKeys(map, new Predicate<String>()
+    return Lists.newArrayList(Maps.filterKeys(map, new Predicate<Comparable>()
     {
-      @Override public boolean apply(@Nullable String key)
+      @Override public boolean apply(@Nullable Comparable key)
       {
-        return map.get(key).equals(Strings.nullToEmpty(value));
+        return map.get(key).equals(dimType.getNullReplaced(value));
       }
     }).keySet());
 
@@ -82,9 +86,9 @@ public class MapLookupExtractor extends LookupExtractor
   {
     try {
       final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-      for (Map.Entry<String, String> entry : map.entrySet()) {
-        final String key = entry.getKey();
-        final String val = entry.getValue();
+      for (Map.Entry<Comparable, Comparable> entry : map.entrySet()) {
+        final String key = String.valueOf(entry.getKey());
+        final String val = String.valueOf(entry.getValue());
         if (!Strings.isNullOrEmpty(key)) {
           outputStream.write(StringUtils.toUtf8(key));
         }

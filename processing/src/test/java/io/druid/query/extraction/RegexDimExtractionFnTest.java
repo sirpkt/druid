@@ -57,7 +57,7 @@ public class RegexDimExtractionFnTest
   {
     String regex = "/([^/]+)/";
     ExtractionFn extractionFn = new RegexDimExtractionFn(regex, false, null);
-    Set<String> extracted = Sets.newLinkedHashSet();
+    Set<Comparable> extracted = Sets.newLinkedHashSet();
 
     for (String path : paths) {
       extracted.add(extractionFn.apply(path));
@@ -72,7 +72,7 @@ public class RegexDimExtractionFnTest
   {
     String regex = "^/([^/]+/[^/]+)(/|$)";
     ExtractionFn extractionFn = new RegexDimExtractionFn(regex, false, null);
-    Set<String> extracted = Sets.newLinkedHashSet();
+    Set<Comparable> extracted = Sets.newLinkedHashSet();
 
     for (String path : paths) {
       extracted.add(extractionFn.apply(path));
@@ -92,7 +92,7 @@ public class RegexDimExtractionFnTest
   {
     String regex = "(.)";
     ExtractionFn extractionFn = new RegexDimExtractionFn(regex, false, null);
-    Set<String> extracted = Sets.newLinkedHashSet();
+    Set<Comparable> extracted = Sets.newLinkedHashSet();
 
     for (String testString : testStrings) {
       extracted.add(extractionFn.apply(testString));
@@ -121,7 +121,7 @@ public class RegexDimExtractionFnTest
   {
     String regex = "(a\\w*)";
     ExtractionFn extractionFn = new RegexDimExtractionFn(regex, true, "foobar");
-    Set<String> extracted = Sets.newLinkedHashSet();
+    Set<Comparable> extracted = Sets.newLinkedHashSet();
 
     for (String testString : testStrings) {
       extracted.add(extractionFn.apply(testString));
@@ -138,7 +138,7 @@ public class RegexDimExtractionFnTest
     Assert.assertArrayEquals(expectedCacheKey, cacheKey);
 
     ExtractionFn nullExtractionFn = new RegexDimExtractionFn(regex, true, null);
-    Set<String> extracted2 = Sets.newLinkedHashSet();
+    Set<Comparable> extracted2 = Sets.newLinkedHashSet();
 
     for (String testString : testStrings) {
       extracted2.add(nullExtractionFn.apply(testString));

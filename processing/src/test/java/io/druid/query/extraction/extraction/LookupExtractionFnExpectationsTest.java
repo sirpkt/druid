@@ -34,10 +34,11 @@ public class LookupExtractionFnExpectationsTest
   public void testMissingKeyIsNull()
   {
     final LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(
-        new MapLookupExtractor(ImmutableMap.of("foo", "bar")),
+        new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("foo", "bar"), "string"),
         true,
         null,
-        false
+        false,
+        "string"
     );
     Assert.assertNull(lookupExtractionFn.apply(null));
   }
@@ -46,10 +47,11 @@ public class LookupExtractionFnExpectationsTest
   public void testMissingKeyIsReplaced()
   {
     final LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(
-        new MapLookupExtractor(ImmutableMap.of("foo", "bar")),
+        new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("foo", "bar"), "string"),
         false,
         "REPLACE",
-        false
+        false,
+        "string"
     );
     Assert.assertEquals("REPLACE", lookupExtractionFn.apply(null));
   }
@@ -58,10 +60,11 @@ public class LookupExtractionFnExpectationsTest
   public void testNullKeyIsMappable()
   {
     final LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(
-        new MapLookupExtractor(ImmutableMap.of("", "bar")),
+        new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("", "bar"), "string"),
         false,
         "REPLACE",
-        false
+        false,
+        "string"
     );
     Assert.assertEquals("bar", lookupExtractionFn.apply(null));
   }
@@ -70,10 +73,11 @@ public class LookupExtractionFnExpectationsTest
   public void testNullValue()
   {
     final LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(
-        new MapLookupExtractor(ImmutableMap.of("foo", "")),
+        new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("foo", ""), "string"),
         false,
         "REPLACE",
-        false
+        false,
+        "string"
     );
     Assert.assertEquals("REPLACE", lookupExtractionFn.apply(null));
   }

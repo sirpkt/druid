@@ -31,21 +31,15 @@ public class IdentityExtractionFn implements ExtractionFn
   }
 
   @Override
-  public String apply(Object value)
+  public Comparable apply(Object value)
   {
     return value == null ? null : Strings.emptyToNull(value.toString());
   }
 
   @Override
-  public String apply(String value)
+  public Comparable apply(Comparable value)
   {
-    return Strings.emptyToNull(value);
-  }
-
-  @Override
-  public String apply(long value)
-  {
-    return Long.toString(value);
+    return Strings.emptyToNull((String)value);
   }
 
   @Override

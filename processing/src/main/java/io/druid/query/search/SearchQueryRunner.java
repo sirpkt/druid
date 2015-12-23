@@ -54,6 +54,8 @@ import io.druid.segment.StorageAdapter;
 import io.druid.segment.column.BitmapIndex;
 import io.druid.segment.column.Column;
 import io.druid.segment.data.IndexedInts;
+import io.druid.segment.dimension.DimensionSchema;
+import io.druid.segment.dimension.DimensionType;
 import io.druid.segment.filter.Filters;
 
 import java.util.Arrays;
@@ -120,12 +122,13 @@ public class SearchQueryRunner implements QueryRunner<Result<SearchResultValue>>
 
         final BitmapIndex bitmapIndex = column.getBitmapIndex();
         ExtractionFn extractionFn = dimension.getExtractionFn();
+        DimensionType dimType = DimensionSchema.fromString(dimension.getDimension()).getType();
         if (extractionFn == null) {
           extractionFn = new IdentityExtractionFn();
         }
         if (bitmapIndex != null) {
           for (int i = 0; i < bitmapIndex.getCardinality(); ++i) {
-            String dimVal = Strings.nullToEmpty(extractionFn.apply(bitmapIndex.getValue(i)));
+            Comparable dimVal = dimType.getNullReplaced(extractionFn.apply(bitmapIndex.getValue(i)));
             if (searchQuerySpec.accept(dimVal) &&
                 bitmapFactory.intersection(Arrays.asList(baseFilter, bitmapIndex.getBitmap(i))).size() > 0) {
               retVal.add(new SearchHit(dimension.getOutputName(), dimVal));

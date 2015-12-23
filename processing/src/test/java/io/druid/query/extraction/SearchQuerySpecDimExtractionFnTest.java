@@ -57,10 +57,10 @@ public class SearchQuerySpecDimExtractionFnTest
     );
     ExtractionFn extractionFn = new SearchQuerySpecDimExtractionFn(spec);
     List<String> expected = ImmutableList.of("Kyoto", "Tokyo", "Toyokawa", "Yorktown");
-    List<String> extracted = Lists.newArrayList();
+    List<Comparable> extracted = Lists.newArrayList();
 
     for (String str : testStrings) {
-      String res = extractionFn.apply(str);
+      Comparable res = extractionFn.apply(str);
       if (res != null) {
         extracted.add(res);
       }
@@ -78,10 +78,10 @@ public class SearchQuerySpecDimExtractionFnTest
     );
     ExtractionFn extractionFn = new SearchQuerySpecDimExtractionFn(spec);
     List<String> expected = ImmutableList.of("Kyoto");
-    List<String> extracted = Lists.newArrayList();
+    List<Comparable> extracted = Lists.newArrayList();
 
     for (String str : testStrings) {
-      String res = extractionFn.apply(str);
+      Comparable res = extractionFn.apply(str);
       if (res != null) {
         extracted.add(res);
       }
@@ -99,10 +99,10 @@ public class SearchQuerySpecDimExtractionFnTest
     );
     ExtractionFn extractionFn = new SearchQuerySpecDimExtractionFn(spec);
     List<String> expected = ImmutableList.of("Tokyo", "Toyokawa");
-    List<String> extracted = Lists.newArrayList();
+    List<Comparable> extracted = Lists.newArrayList();
 
     for (String str : testStrings) {
-      String res = extractionFn.apply(str);
+      Comparable res = extractionFn.apply(str);
       if (res != null) {
         extracted.add(res);
       }

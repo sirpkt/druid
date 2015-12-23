@@ -32,13 +32,13 @@ import java.nio.ByteBuffer;
 public class ExtractionDimFilter implements DimFilter
 {
   private final String dimension;
-  private final String value;
+  private final Comparable value;
   private final ExtractionFn extractionFn;
 
   @JsonCreator
   public ExtractionDimFilter(
       @JsonProperty("dimension") String dimension,
-      @JsonProperty("value") String value,
+      @JsonProperty("value") Comparable value,
       @JsonProperty("extractionFn") ExtractionFn extractionFn,
       // for backwards compatibility
       @Deprecated @JsonProperty("dimExtractionFn") ExtractionFn dimExtractionFn
@@ -62,7 +62,7 @@ public class ExtractionDimFilter implements DimFilter
   }
 
   @JsonProperty
-  public String getValue()
+  public Comparable getValue()
   {
     return value;
   }
@@ -77,7 +77,7 @@ public class ExtractionDimFilter implements DimFilter
   public byte[] getCacheKey()
   {
     byte[] dimensionBytes = StringUtils.toUtf8(dimension);
-    byte[] valueBytes = StringUtils.toUtf8(value);
+    byte[] valueBytes = StringUtils.toUtf8(value.toString());
 
     return ByteBuffer.allocate(2 + dimensionBytes.length + valueBytes.length)
                      .put(DimFilterCacheHelper.EXTRACTION_CACHE_ID)

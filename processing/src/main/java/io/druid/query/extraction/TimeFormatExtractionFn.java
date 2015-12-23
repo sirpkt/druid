@@ -88,19 +88,13 @@ public class TimeFormatExtractionFn implements ExtractionFn
   }
 
   @Override
-  public String apply(long value)
-  {
-    return formatter.print(value);
-  }
-
-  @Override
-  public String apply(Object value)
+  public Comparable apply(Object value)
   {
     return formatter.print(new DateTime(value));
   }
 
   @Override
-  public String apply(String value)
+  public Comparable apply(Comparable value)
   {
     return apply((Object)value);
   }

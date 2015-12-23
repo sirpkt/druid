@@ -85,8 +85,9 @@ public class RegexDimExtractionFn extends DimExtractionFn
   }
 
   @Override
-  public String apply(String dimValue)
+  public Comparable apply(Comparable value)
   {
+    String dimValue = (String)value;
     if (dimValue == null) {
       return null;
     }

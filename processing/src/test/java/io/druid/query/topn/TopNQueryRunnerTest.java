@@ -1625,12 +1625,12 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Comparable, Comparable>of(
                             "spot", "2spot0",
                             "total_market", "1total_market0",
                             "upfront", "3upfront0"
-                        )
-                    ), false, "MISSING", true
+                        ), "string"
+                    ), false, "MISSING", true, "string"
                 ),
                 null
             )
@@ -1688,12 +1688,12 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Comparable, Comparable>of(
                             "spot", "2spot0",
                             "total_market", "1total_market0",
                             "upfront", "3upfront0"
-                        )
-                    ), false, "MISSING", false
+                        ), "string"
+                    ), false, "MISSING", false, "string"
                 ),
                 null
             )
@@ -1752,12 +1752,12 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Comparable, Comparable>of(
                             "spot", "2spot0",
                             "total_market", "1total_market0",
                             "upfront", "3upfront0"
-                        )
-                    ), true, null, true
+                        ), "string"
+                    ), true, null, true, "string"
                 ),
                 null
             )
@@ -1815,15 +1815,15 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Comparable, Comparable>of(
                             "spot",
                             "spot0",
                             "total_market",
                             "total_market0",
                             "upfront",
                             "upfront0"
-                        )
-                    ), true, null, false
+                        ), "string"
+                    ), true, null, false, "string"
                 ),
                 null
             )
@@ -1880,15 +1880,15 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Comparable, Comparable>of(
                             "spot",
                             "2spot",
                             "total_market",
                             "3total_market",
                             "upfront",
                             "1upfront"
-                        )
-                    ), true, null, true
+                        ), "string"
+                    ), true, null, true, "string"
                 ),
                 null
             )
@@ -1945,15 +1945,15 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Comparable, Comparable>of(
                             "spot",
                             "2spot",
                             "total_market",
                             "3total_market",
                             "upfront",
                             "1upfront"
-                        )
-                    ), true, null, false
+                        ), "string"
+                    ), true, null, false, "string"
                 ),
                 null
             )
@@ -2011,15 +2011,15 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Comparable, Comparable>of(
                             "spot",
                             "2spot",
                             "total_market",
                             "3total_market",
                             "upfront",
                             "1upfront"
-                        )
-                    ), true, null, true
+                        ), "string"
+                    ), true, null, true, "string"
                 ),
                 null
             )
@@ -2237,9 +2237,9 @@ public class TopNQueryRunnerTest
                   }
 
                   @Override
-                  public String apply(String value)
+                  public Comparable apply(Comparable value)
                   {
-                    return value.substring(0, 1);
+                    return ((String)value).substring(0, 1);
                   }
 
                   @Override
@@ -2396,7 +2396,7 @@ public class TopNQueryRunnerTest
       }
 
       @Override
-      public String apply(String dimValue)
+      public Comparable apply(Comparable dimValue)
       {
         return dimValue.equals("total_market") ? null : dimValue;
       }
@@ -2486,7 +2486,7 @@ public class TopNQueryRunnerTest
       }
 
       @Override
-      public String apply(String dimValue)
+      public Comparable apply(Comparable dimValue)
       {
         return dimValue.equals("total_market") ? "" : dimValue;
       }
@@ -3156,10 +3156,10 @@ public class TopNQueryRunnerTest
   @Test
   public void testTopNWithExtractionFilter()
   {
-    Map<String, String> extractionMap = new HashMap<>();
+    Map<Comparable, Comparable> extractionMap = new HashMap<>();
     extractionMap.put("spot", "spot0");
-    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap);
-    LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true);
+    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, "string");
+    LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true, "string");
 
     TopNQuery query = new TopNQueryBuilder().dataSource(QueryRunnerTestHelper.dataSource)
                                             .granularity(QueryRunnerTestHelper.allGran)
@@ -3202,11 +3202,11 @@ public class TopNQueryRunnerTest
   @Test
   public void testTopNWithExtractionFilterAndFilteredAggregatorCaseNoExistingValue()
   {
-    Map<String, String> extractionMap = new HashMap<>();
+    Map<Comparable, Comparable> extractionMap = new HashMap<>();
     extractionMap.put("", "NULL");
 
-    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap);
-    LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true);
+    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, "string");
+    LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true, "string");
     DimFilter extractionFilter = new ExtractionDimFilter("null_column", "NULL", lookupExtractionFn, null);
     TopNQueryBuilder topNQueryBuilder = new TopNQueryBuilder()
         .dataSource(QueryRunnerTestHelper.dataSource)

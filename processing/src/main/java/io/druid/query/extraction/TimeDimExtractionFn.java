@@ -68,11 +68,11 @@ public class TimeDimExtractionFn extends DimExtractionFn
   }
 
   @Override
-  public String apply(String dimValue)
+  public Comparable apply(Comparable dimValue)
   {
     Date date;
     try {
-      date = timeFormatter.parse(dimValue);
+      date = timeFormatter.parse((String)dimValue);
     }
     catch (ParseException e) {
       return dimValue;

@@ -35,13 +35,20 @@ public class FunctionalExtractionTest
   private static class SimpleFunctionExtraction extends FunctionalExtraction
   {
     public SimpleFunctionExtraction(
-        Function<String, String> extractionFunction,
+        final Function<String, String> extractionFunction,
         Boolean retainMissingValue,
         String replaceMissingValueWith,
-        Boolean uniqueProjections
+        Boolean uniqueProjections,
+        String type
     )
     {
-      super(extractionFunction, retainMissingValue, replaceMissingValueWith, uniqueProjections);
+      super(new Function<Comparable, Comparable>() {
+        @Nullable
+        @Override
+        public Comparable apply(@Nullable Comparable comparable) {
+          return extractionFunction.apply((String)comparable);
+        }
+      }, retainMissingValue, replaceMissingValueWith, uniqueProjections, type);
     }
 
     @Override
@@ -132,7 +139,8 @@ public class FunctionalExtractionTest
         fn,
         true,
         null,
-        false
+        false,
+        "string"
     );
     final String out = fn.apply(in);
     Assert.assertEquals(Strings.isNullOrEmpty(out) ? in : out, exFn.apply(in));
@@ -146,7 +154,8 @@ public class FunctionalExtractionTest
         fn,
         false,
         MISSING,
-        false
+        false,
+        "string"
     );
     final String out = fn.apply(in);
     Assert.assertEquals(Strings.isNullOrEmpty(out) ? MISSING : out, exFn.apply(in));
@@ -161,7 +170,8 @@ public class FunctionalExtractionTest
         fn,
         false,
         "",
-        false
+        false,
+        "string"
     );
     final String out = fn.apply(in);
     Assert.assertEquals(Strings.isNullOrEmpty(out) ? null : out, exFn.apply(in));
@@ -175,7 +185,8 @@ public class FunctionalExtractionTest
         fn,
         false,
         "",
-        false
+        false,
+        "string"
     );
     final String out = fn.apply(in);
     Assert.assertEquals(Strings.isNullOrEmpty(out) ? null : out, exFn.apply(in));
@@ -188,7 +199,8 @@ public class FunctionalExtractionTest
         fn,
         true,
         null,
-        false
+        false,
+        "string"
     );
     if (Strings.isNullOrEmpty(fn.apply(null))) {
       Assert.assertEquals(null, exFn.apply(null));
@@ -202,7 +214,8 @@ public class FunctionalExtractionTest
         fn,
         true,
         MISSING,
-        false
+        false,
+        "string"
     );
   }
 
@@ -214,7 +227,8 @@ public class FunctionalExtractionTest
             fn,
             true,
             null,
-            false
+            false,
+            "string"
         ).getExtractionType()
     );
     Assert.assertEquals(
@@ -223,7 +237,8 @@ public class FunctionalExtractionTest
             fn,
             true,
             null,
-            false
+            false,
+            "string"
         ).getExtractionType()
     );
     Assert.assertEquals(
@@ -232,7 +247,8 @@ public class FunctionalExtractionTest
             fn,
             true,
             null,
-            true
+            true,
+            "string"
         ).getExtractionType()
     );
   }

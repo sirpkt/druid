@@ -43,7 +43,7 @@ public class TimeDimExtractionFnTest
   @Test
   public void testMonthExtraction()
   {
-    Set<String> months = Sets.newHashSet();
+    Set<Comparable> months = Sets.newHashSet();
     ExtractionFn extractionFn = new TimeDimExtractionFn("MM/dd/yyyy", "MM/yyyy");
 
     for (String dim : dims) {
@@ -60,7 +60,7 @@ public class TimeDimExtractionFnTest
   @Test
   public void testQuarterExtraction()
   {
-    Set<String> quarters = Sets.newHashSet();
+    Set<Comparable> quarters = Sets.newHashSet();
     ExtractionFn extractionFn = new TimeDimExtractionFn("MM/dd/yyyy", "QQQ/yyyy");
 
     for (String dim : dims) {

@@ -27,8 +27,8 @@ import io.druid.segment.column.ValueType;
 public enum DimensionType
 {
   STRING("STRING", "java.lang.String", ValueType.STRING, ""),
-  FLOAT("FLOAT", "java.lang.Float", ValueType.FLOAT, 0.0f),
-  LONG("LONG", "java.lang.Long", ValueType.LONG, 0);
+  FLOAT("FLOAT", "java.lang.Float", ValueType.FLOAT, Float.NaN),
+  LONG("LONG", "java.lang.Long", ValueType.LONG, null);
 
   private final String name;
   private final Class clazz;
@@ -70,6 +70,16 @@ public enum DimensionType
   public Comparable getNullReplacement()
   {
     return nullReplacement;
+  }
+
+  public Comparable getNullReplaced(Comparable value)
+  {
+    return value == null ? nullReplacement : value;
+  }
+
+  public Comparable getNullRestored(Comparable value)
+  {
+    return value == nullReplacement ? null : value;
   }
 
   public Comparable fromStringValue(String str) {

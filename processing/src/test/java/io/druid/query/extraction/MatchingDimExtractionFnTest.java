@@ -51,10 +51,10 @@ public class MatchingDimExtractionFnTest
     String regex = ".*[Tt][Oo].*";
     ExtractionFn extractionFn = new MatchingDimExtractionFn(regex);
     List<String> expected = Arrays.asList("Quito", "Tokyo", "Stockholm", "Pretoria", "Wellington");
-    Set<String> extracted = Sets.newHashSet();
+    Set<Comparable> extracted = Sets.newHashSet();
 
     for (String str : testStrings) {
-      String res = extractionFn.apply(str);
+      Comparable res = extractionFn.apply(str);
       if (res != null) {
         extracted.add(res);
       }
@@ -62,7 +62,7 @@ public class MatchingDimExtractionFnTest
 
     Assert.assertEquals(5, extracted.size());
 
-    for (String str : extracted) {
+    for (Comparable str : extracted) {
       Assert.assertTrue(expected.contains(str));
     }
   }

@@ -61,8 +61,10 @@ public class SubstringDimExtractionFn extends DimExtractionFn
   }
 
   @Override
-  public String apply(String dimValue)
+  public Comparable apply(Comparable value)
   {
+    String dimValue = (String)value;
+
     if (Strings.isNullOrEmpty(dimValue)) {
       return null;
     }

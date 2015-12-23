@@ -33,8 +33,8 @@ public class SingleScanTimeDimSelector implements DimensionSelector
   private final ExtractionFn extractionFn;
   private final LongColumnSelector selector;
 
-  private final Map<Integer, String> timeValues = Maps.newHashMap();
-  private String currentValue = null;
+  private final Map<Integer, Comparable> timeValues = Maps.newHashMap();
+  private Comparable currentValue = null;
   private long currentTimestamp = Long.MIN_VALUE;
   private int index = -1;
 
@@ -60,7 +60,7 @@ public class SingleScanTimeDimSelector implements DimensionSelector
     final long timestamp = selector.get();
     if (index < 0) {
       currentTimestamp = timestamp;
-      currentValue = extractionFn.apply(timestamp);
+      currentValue = extractionFn.apply(String.valueOf(timestamp));
       ++index;
       timeValues.put(index, currentValue);
     }
@@ -78,7 +78,7 @@ public class SingleScanTimeDimSelector implements DimensionSelector
         throw new IllegalStateException("cannot re-use time dimension selector for multiple scans");
       }
       currentTimestamp = timestamp;
-      final String value = extractionFn.apply(timestamp);
+      final Comparable value = extractionFn.apply(timestamp);
       if (!value.equals(currentValue)) {
         currentValue = value;
         ++index;

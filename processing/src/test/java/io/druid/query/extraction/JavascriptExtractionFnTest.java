@@ -49,7 +49,7 @@ public class JavascriptExtractionFnTest
     ExtractionFn extractionFn = new JavascriptExtractionFn(function, false);
 
     for (String str : testStrings) {
-      String res = extractionFn.apply(str);
+      Comparable res = extractionFn.apply(str);
       Assert.assertEquals(str.substring(0, 3), res);
     }
   }
@@ -85,7 +85,7 @@ public class JavascriptExtractionFnTest
     Iterator<String> it = Iterators.forArray("0", "5", "5", "10", null);
 
     for(String str : Lists.newArrayList("1", "5", "6", "10", "CA")) {
-      String res = extractionFn.apply(str);
+      Comparable res = extractionFn.apply(str);
       String expected = it.next();
       Assert.assertEquals(expected, res);
     }
@@ -99,7 +99,7 @@ public class JavascriptExtractionFnTest
 
     Iterator it = Iterators.forArray("Qt", "Clgry", "Tky", "Stckhlm", "Vncvr", "Prtr", "Wllngtn", "Ontr");
     for (String str : testStrings) {
-      String res = extractionFn.apply(str);
+      Comparable res = extractionFn.apply(str);
       Assert.assertEquals(it.next(), res);
     }
   }
@@ -305,7 +305,7 @@ public class JavascriptExtractionFnTest
     Iterator<String> it = Iterators.forArray("introduc", "exploratori", "analyt", "on", "larg", "dataset");
 
     while(inputs.hasNext()) {
-      String res = extractionFn.apply(inputs.next());
+      Comparable res = extractionFn.apply(inputs.next());
       Assert.assertEquals(it.next(), res);
     }
   }

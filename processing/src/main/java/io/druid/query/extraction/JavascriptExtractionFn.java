@@ -103,21 +103,15 @@ public class JavascriptExtractionFn implements ExtractionFn
   }
 
   @Override
-  public String apply(Object value)
+  public Comparable apply(Object value)
   {
     return Strings.emptyToNull(fn.apply(value));
   }
 
   @Override
-  public String apply(String value)
+  public Comparable apply(Comparable value)
   {
     return this.apply((Object) value);
-  }
-
-  @Override
-  public String apply(long value)
-  {
-    return this.apply((Long) value);
   }
 
   @Override
