@@ -752,7 +752,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     @Override
     public T getValue(int id)
     {
-      return replaceNull(delegate.getValue(id));
+      return restoreNull(delegate.getValue(id));
     }
 
     @Override
@@ -782,7 +782,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     @Override
     public T getSortedValue(int index)
     {
-      return replaceNull(delegate.getSortedValue(index));
+      return restoreNull(delegate.getSortedValue(index));
     }
 
     @Override
@@ -801,6 +801,15 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     {
       if(val == null) {
         val = (T)type.getNullReplacement();
+      }
+
+      return val;
+    }
+
+    private T restoreNull(T val)
+    {
+      if(val == (T)type.getNullReplacement()) {
+        return null;
       }
 
       return val;
