@@ -23,7 +23,6 @@ package io.druid.query.extraction;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
-import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.metamx.common.StringUtils;
 import io.druid.segment.dimension.DimensionType;
@@ -49,8 +48,8 @@ public class LookupExtractionFn extends FunctionalExtraction
       final Comparable replaceMissingValueWith,
       @JsonProperty("injective")
       final boolean injective,
-      @JsonProperty("type")
-      final String type
+      @JsonProperty("dimType")
+      final String dimType
   )
   {
     super(
@@ -60,13 +59,13 @@ public class LookupExtractionFn extends FunctionalExtraction
           @Override
           public Comparable apply(Comparable input)
           {
-            return lookup.apply(DimensionType.fromString(type).getNullReplaced(input));
+            return lookup.apply(DimensionType.fromString(dimType).getNullReplaced(input));
           }
         },
         retainMissingValue,
         replaceMissingValueWith,
         injective,
-        type
+        dimType
     );
     this.lookup = lookup;
   }
@@ -95,9 +94,9 @@ public class LookupExtractionFn extends FunctionalExtraction
 
   @Override
   @JsonProperty
-  public String getType()
+  public String getDimType()
   {
-    return super.getType();
+    return super.getDimType();
   }
 
   @Override
@@ -112,6 +111,7 @@ public class LookupExtractionFn extends FunctionalExtraction
       }
       outputStream.write(isInjective() ? 1 : 0);
       outputStream.write(isRetainMissingValue() ? 1 : 0);
+      outputStream.write(StringUtils.toUtf8(getDimType()));
       return outputStream.toByteArray();
     }
     catch (IOException ex) {

@@ -40,7 +40,7 @@ import java.util.UUID;
 public class MapLookupExtractionFnSerDeTest
 {
   private static ObjectMapper mapper;
-  private static final Map<String, String> renames = ImmutableMap.of(
+  private static final Map<Comparable, Comparable> renames = ImmutableMap.<Comparable, Comparable>of(
       "foo", "bar",
       "bar", "baz"
   );
@@ -57,11 +57,11 @@ public class MapLookupExtractionFnSerDeTest
   {
     final DimExtractionFn fn = mapper.reader(DimExtractionFn.class).readValue(
         String.format(
-            "{\"type\":\"lookup\",\"lookup\":{\"type\":\"map\", \"map\":%s}}",
+            "{\"type\":\"lookup\",\"lookup\":{\"type\":\"map\", \"map\":%s,\"dimType\":\"string\"},\"dimType\":\"string\"}",
             mapper.writeValueAsString(renames)
         )
     );
-    for (String key : renames.keySet()) {
+    for (Comparable key : renames.keySet()) {
       Assert.assertEquals(renames.get(key), fn.apply(key));
     }
     final String crazyString = UUID.randomUUID().toString();
@@ -70,7 +70,7 @@ public class MapLookupExtractionFnSerDeTest
     Assert.assertEquals(
         crazyString, mapper.reader(DimExtractionFn.class).<DimExtractionFn>readValue(
             String.format(
-                "{\"type\":\"lookup\",\"lookup\":{\"type\":\"map\", \"map\":%s}, \"retainMissingValue\":true}",
+                "{\"type\":\"lookup\",\"lookup\":{\"type\":\"map\", \"map\":%s,\"dimType\":\"string\"}, \"retainMissingValue\":true,\"dimType\":\"string\"}",
                 mapper.writeValueAsString(renames)
             )
         ).apply(crazyString)

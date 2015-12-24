@@ -192,7 +192,7 @@ public class LookupExtractionFnTest
                   !lookupExtractionFn.isRetainMissingValue(),
                   lookupExtractionFn.getReplaceMissingValueWith(),
                   lookupExtractionFn.isInjective(),
-                  lookupExtractionFn.getType()
+                  lookupExtractionFn.getDimType()
               ).getCacheKey()
           )
       );
@@ -204,7 +204,7 @@ public class LookupExtractionFnTest
                   !lookupExtractionFn.isRetainMissingValue(),
                   lookupExtractionFn.getReplaceMissingValueWith(),
                   !lookupExtractionFn.isInjective(),
-                  lookupExtractionFn.getType()
+                  lookupExtractionFn.getDimType()
               ).getCacheKey()
           )
       );
@@ -217,7 +217,7 @@ public class LookupExtractionFnTest
                 lookupExtractionFn.isRetainMissingValue(),
                 lookupExtractionFn.getReplaceMissingValueWith(),
                 lookupExtractionFn.isInjective(),
-                lookupExtractionFn.getType()
+                lookupExtractionFn.getDimType()
             ).getCacheKey()
         )
     );
@@ -229,7 +229,7 @@ public class LookupExtractionFnTest
                 lookupExtractionFn.isRetainMissingValue(),
                 lookupExtractionFn.getReplaceMissingValueWith(),
                 !lookupExtractionFn.isInjective(),
-                lookupExtractionFn.getType()
+                lookupExtractionFn.getDimType()
             ).getCacheKey()
         )
     );

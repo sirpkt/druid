@@ -101,7 +101,7 @@ public abstract class FunctionalExtraction extends DimExtractionFn
     return retainMissingValue;
   }
 
-  public String getType() {
+  public String getDimType() {
     return dimType.toString();
   }
 

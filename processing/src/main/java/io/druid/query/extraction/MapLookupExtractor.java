@@ -48,17 +48,22 @@ public class MapLookupExtractor extends LookupExtractor
   @JsonCreator
   public MapLookupExtractor(
       @JsonProperty("map") Map<Comparable, Comparable> map,
-      @JsonProperty("type") String type
+      @JsonProperty("dimType") String dimType
   )
   {
     this.map = Preconditions.checkNotNull(map, "map");
-    this.dimType = DimensionType.fromString(type);
+    this.dimType = DimensionType.fromString(dimType);
   }
 
   @JsonProperty
   public Map<Comparable, Comparable> getMap()
   {
     return ImmutableMap.copyOf(map);
+  }
+
+  @JsonProperty
+  public String getDimType() {
+    return dimType.toString();
   }
 
   @Nullable
@@ -98,6 +103,7 @@ public class MapLookupExtractor extends LookupExtractor
         }
         outputStream.write((byte)0xFF);
       }
+      outputStream.write(StringUtils.toUtf8(getDimType()));
       return outputStream.toByteArray();
     }
     catch (IOException ex) {

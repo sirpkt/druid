@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.name.Named;
 import com.metamx.common.StringUtils;
 
@@ -77,14 +78,14 @@ public class NamespacedExtractor extends LookupExtractor
   }
 
   @Override
-  public String apply(String value)
+  public Comparable apply(Comparable value)
   {
-    return extractionFunction.apply(value);
+    return extractionFunction.apply((String)value);
   }
 
   @Override
-  public List<String> unapply(@NotNull String value)
+  public List<Comparable> unapply(@NotNull Comparable value)
   {
-    return reverseExtractionFunction.apply(value);
+    return ImmutableList.<Comparable>copyOf(reverseExtractionFunction.apply((String)value));
   }
 }
