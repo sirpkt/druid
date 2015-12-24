@@ -54,7 +54,7 @@ public class SegmentMetadataQueryQueryToolChestTest
         new SegmentMetadataQueryQueryToolChest(null).getCacheStrategy(query);
 
     // Test cache key generation
-    byte[] expectedKey = {0x04, 0x01, (byte) 0xFF, 0x00, 0x01};
+    byte[] expectedKey = {0x04, 0x01, (byte) 0xFF, 0x00, 0x01, 0x02};
     byte[] actualKey = strategy.computeCacheKey(query);
     Assert.assertArrayEquals(expectedKey, actualKey);
 
@@ -71,7 +71,8 @@ public class SegmentMetadataQueryQueryToolChestTest
                 1,
                 null
             )
-        ), 71982
+        ), 71982,
+        100
     );
 
     Object preparedValue = strategy.prepareForCache().apply(result);

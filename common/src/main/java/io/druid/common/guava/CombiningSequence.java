@@ -19,6 +19,7 @@
 
 package io.druid.common.guava;
 
+import com.google.common.base.Function;
 import com.google.common.collect.Ordering;
 import com.metamx.common.guava.Accumulator;
 import com.metamx.common.guava.Sequence;
