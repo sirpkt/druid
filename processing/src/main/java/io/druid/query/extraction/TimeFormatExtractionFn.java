@@ -96,7 +96,7 @@ public class TimeFormatExtractionFn implements ExtractionFn
   @Override
   public Comparable apply(Comparable value)
   {
-    return apply((Object)String.valueOf(value));
+    return apply((Object)Long.parseLong(String.valueOf(value)));
   }
 
   @Override
