@@ -112,6 +112,7 @@ public class DruidCoordinatorTest extends CuratorTestBase
     EasyMock.replay(configManager);
     setupServerAndCurator();
     curator.start();
+    curator.blockUntilConnected();
     curator.create().creatingParentsIfNeeded().forPath(LOADPATH);
     objectMapper = new DefaultObjectMapper();
     druidCoordinatorConfig = new TestDruidCoordinatorConfig(new Duration(COORDINATOR_START_DELAY), new Duration(COORDINATOR_PERIOD), null, null, null, false, false);
@@ -337,6 +338,10 @@ public class DruidCoordinatorTest extends CuratorTestBase
     Map segmentAvailability = coordinator.getSegmentAvailability().snapshot();
     Assert.assertEquals(1, segmentAvailability.size());
     Assert.assertEquals(0l, segmentAvailability.get(dataSource));
+
+    while (coordinator.getLoadPendingDatasources().get(dataSource).get() > 0) {
+      Thread.sleep(50);
+    }
 
     Map<String, CountingMap<String>> replicationStatus = coordinator.getReplicationStatus();
     Assert.assertNotNull(replicationStatus);
