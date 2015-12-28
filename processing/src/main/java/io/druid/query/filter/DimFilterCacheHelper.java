@@ -37,6 +37,7 @@ class DimFilterCacheHelper
   static final byte JAVASCRIPT_CACHE_ID = 0x7;
   static final byte SPATIAL_CACHE_ID = 0x8;
   static final byte IN_CACHE_ID = 0x9;
+  static final byte RANGE_CACHE_ID=0xA;
   static final byte STRING_SEPARATOR = (byte) 0xFF;
 
   static byte[] computeCacheKey(byte cacheIdKey, List<DimFilter> filters)

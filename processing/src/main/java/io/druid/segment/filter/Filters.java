@@ -21,18 +21,7 @@ package io.druid.segment.filter;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
-import io.druid.query.filter.AndDimFilter;
-import io.druid.query.filter.DimFilter;
-import io.druid.query.filter.ExtractionDimFilter;
-import io.druid.query.filter.Filter;
-import io.druid.query.filter.InDimFilter;
-import io.druid.query.filter.JavaScriptDimFilter;
-import io.druid.query.filter.NotDimFilter;
-import io.druid.query.filter.OrDimFilter;
-import io.druid.query.filter.RegexDimFilter;
-import io.druid.query.filter.SearchQueryDimFilter;
-import io.druid.query.filter.SelectorDimFilter;
-import io.druid.query.filter.SpatialDimFilter;
+import io.druid.query.filter.*;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -111,6 +100,8 @@ public class Filters
       );
 
       filter = new OrFilter(listFilters);
+    } else if (dimFilter instanceof RangeDimFilter) {
+
     }
 
     return filter;
