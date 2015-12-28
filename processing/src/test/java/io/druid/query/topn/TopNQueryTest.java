@@ -93,7 +93,7 @@ public class TopNQueryTest
             new ExtractionDimensionSpec(
                 marketDimension,
                 marketDimension,
-                new LookupExtractionFn(new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("foo", "bar"), "string"), true, null, false, "string"),
+                new LookupExtractionFn(new MapLookupExtractor(ImmutableMap.of("foo", "bar")), true, null, false, "string"),
                 null
             )
         )

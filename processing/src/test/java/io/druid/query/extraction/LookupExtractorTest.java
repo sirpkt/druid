@@ -35,7 +35,7 @@ import java.util.Map;
 public class LookupExtractorTest
 {
 
-  static final Map<Comparable, Comparable> EXPECTED_MAP = ImmutableMap.<Comparable, Comparable>of(
+  static final Map<String, String> EXPECTED_MAP = ImmutableMap.of(
       "key1",
       "value1",
       "key2",
@@ -46,15 +46,15 @@ public class LookupExtractorTest
       "emptyString"
   );
 
-  static final Map<Comparable, List<Comparable>> EXPECTED_REVERSE_MAP = ImmutableMap.<Comparable, List<Comparable>>of(
+  static final Map<String, List<String>> EXPECTED_REVERSE_MAP = ImmutableMap.of(
       "value1",
-      Arrays.<Comparable>asList("key1", "key-1"),
+      Arrays.asList("key1", "key-1"),
       "value2",
-      Arrays.<Comparable>asList("key2"),
+      Arrays.asList("key2"),
       "emptyString",
-      Arrays.<Comparable>asList("")
+      Arrays.asList("")
   );
-  LookupExtractor lookupExtractor = new MapLookupExtractor(EXPECTED_MAP, "string");
+  LookupExtractor lookupExtractor = new MapLookupExtractor(EXPECTED_MAP);
 
   @Test
   public void testApplyAll()
@@ -71,7 +71,7 @@ public class LookupExtractorTest
   @Test
   public void testApplyAllWithEmptySet()
   {
-    Assert.assertEquals(Collections.emptyMap(), lookupExtractor.applyAll(Collections.<Comparable>emptySet()));
+    Assert.assertEquals(Collections.emptyMap(), lookupExtractor.applyAll(Collections.<String>emptySet()));
   }
 
   @Test
@@ -79,7 +79,7 @@ public class LookupExtractorTest
   {
     Map<String, String> actual = new HashMap<>();
     actual.put("not there", null);
-    Assert.assertEquals(actual, lookupExtractor.applyAll(Lists.<Comparable>newArrayList("not there")));
+    Assert.assertEquals(actual, lookupExtractor.applyAll(Lists.<String>newArrayList("not there")));
   }
 
   @Test
@@ -91,7 +91,7 @@ public class LookupExtractorTest
   @Test
   public void testunapplyAllWithEmptySet()
   {
-    Assert.assertEquals(Collections.emptyMap(), lookupExtractor.unapplyAll(Collections.<Comparable>emptySet()));
+    Assert.assertEquals(Collections.emptyMap(), lookupExtractor.unapplyAll(Collections.<String>emptySet()));
   }
 
   @Test

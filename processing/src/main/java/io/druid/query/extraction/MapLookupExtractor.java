@@ -42,45 +42,37 @@ import java.util.Map;
 @JsonTypeName("map")
 public class MapLookupExtractor extends LookupExtractor
 {
-  private final Map<Comparable, Comparable> map;
-  private final DimensionType dimType;
+  private final Map<String, String> map;
 
   @JsonCreator
   public MapLookupExtractor(
-      @JsonProperty("map") Map<Comparable, Comparable> map,
-      @JsonProperty("dimType") String dimType
+      @JsonProperty("map") Map<String, String> map
   )
   {
     this.map = Preconditions.checkNotNull(map, "map");
-    this.dimType = DimensionType.fromString(dimType);
   }
 
   @JsonProperty
-  public Map<Comparable, Comparable> getMap()
+  public Map<String, String> getMap()
   {
     return ImmutableMap.copyOf(map);
   }
 
-  @JsonProperty
-  public String getDimType() {
-    return dimType.toString();
-  }
-
   @Nullable
   @Override
-  public Comparable apply(@NotNull Comparable val)
+  public String apply(@NotNull String val)
   {
     return map.get(val);
   }
 
   @Override
-  public List<Comparable> unapply(final Comparable value)
+  public List<String> unapply(final String value)
   {
-    return Lists.newArrayList(Maps.filterKeys(map, new Predicate<Comparable>()
+    return Lists.newArrayList(Maps.filterKeys(map, new Predicate<String>()
     {
-      @Override public boolean apply(@Nullable Comparable key)
+      @Override public boolean apply(@Nullable String key)
       {
-        return map.get(key).equals(dimType.getNullReplaced(value));
+        return map.get(key).equals(Strings.nullToEmpty(value));
       }
     }).keySet());
 
@@ -91,9 +83,9 @@ public class MapLookupExtractor extends LookupExtractor
   {
     try {
       final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-      for (Map.Entry<Comparable, Comparable> entry : map.entrySet()) {
-        final String key = String.valueOf(entry.getKey());
-        final String val = String.valueOf(entry.getValue());
+      for (Map.Entry<String, String> entry : map.entrySet()) {
+        final String key = entry.getKey();
+        final String val = entry.getValue();
         if (!Strings.isNullOrEmpty(key)) {
           outputStream.write(StringUtils.toUtf8(key));
         }
@@ -103,7 +95,6 @@ public class MapLookupExtractor extends LookupExtractor
         }
         outputStream.write((byte)0xFF);
       }
-      outputStream.write(StringUtils.toUtf8(getDimType()));
       return outputStream.toByteArray();
     }
     catch (IOException ex) {

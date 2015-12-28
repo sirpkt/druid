@@ -20,6 +20,7 @@
 package io.druid.query.extraction;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Injector;
@@ -57,7 +58,7 @@ public class MapLookupExtractionFnSerDeTest
   {
     final DimExtractionFn fn = mapper.reader(DimExtractionFn.class).readValue(
         String.format(
-            "{\"type\":\"lookup\",\"lookup\":{\"type\":\"map\", \"map\":%s,\"dimType\":\"string\"},\"dimType\":\"string\"}",
+            "{\"type\":\"lookup\",\"lookup\":{\"type\":\"map\", \"map\":%s},\"dimType\":\"string\"}",
             mapper.writeValueAsString(renames)
         )
     );
@@ -70,7 +71,7 @@ public class MapLookupExtractionFnSerDeTest
     Assert.assertEquals(
         crazyString, mapper.reader(DimExtractionFn.class).<DimExtractionFn>readValue(
             String.format(
-                "{\"type\":\"lookup\",\"lookup\":{\"type\":\"map\", \"map\":%s,\"dimType\":\"string\"}, \"retainMissingValue\":true,\"dimType\":\"string\"}",
+                "{\"type\":\"lookup\",\"lookup\":{\"type\":\"map\", \"map\":%s}, \"retainMissingValue\":true,\"dimType\":\"string\"}",
                 mapper.writeValueAsString(renames)
             )
         ).apply(crazyString)

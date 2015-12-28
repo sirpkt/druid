@@ -251,7 +251,7 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithRebucketRename()
   {
-    Map<Comparable, Comparable> map = new HashMap<>();
+    Map<String, String> map = new HashMap<>();
     map.put("automotive", "automotive0");
     map.put("business", "business0");
     map.put("entertainment", "entertainment0");
@@ -268,7 +268,7 @@ public class GroupByQueryRunnerTest
         .setDimensions(
             Lists.<DimensionSpec>newArrayList(
                 new ExtractionDimensionSpec(
-                    "quality", "alias", new LookupExtractionFn(new MapLookupExtractor(map, "string"), false, null, false, "string"), null
+                    "quality", "alias", new LookupExtractionFn(new MapLookupExtractor(map), false, null, false, "string"), null
                 )
             )
         )
@@ -327,7 +327,7 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithSimpleRenameRetainMissingNonInjective()
   {
-    Map<Comparable, Comparable> map = new HashMap<>();
+    Map<String, String> map = new HashMap<>();
     map.put("automotive", "automotive0");
     map.put("business", "business0");
     map.put("entertainment", "entertainment0");
@@ -344,7 +344,7 @@ public class GroupByQueryRunnerTest
         .setDimensions(
             Lists.<DimensionSpec>newArrayList(
                 new ExtractionDimensionSpec(
-                    "quality", "alias", new LookupExtractionFn(new MapLookupExtractor(map, "string"), true, null, false, "string"), null
+                    "quality", "alias", new LookupExtractionFn(new MapLookupExtractor(map), true, null, false, "string"), null
                 )
             )
         )
@@ -403,7 +403,7 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithSimpleRenameRetainMissing()
   {
-    Map<Comparable, Comparable> map = new HashMap<>();
+    Map<String, String> map = new HashMap<>();
     map.put("automotive", "automotive0");
     map.put("business", "business0");
     map.put("entertainment", "entertainment0");
@@ -420,7 +420,7 @@ public class GroupByQueryRunnerTest
         .setDimensions(
             Lists.<DimensionSpec>newArrayList(
                 new ExtractionDimensionSpec(
-                    "quality", "alias", new LookupExtractionFn(new MapLookupExtractor(map, "string"), true, null, true, "string"), null
+                    "quality", "alias", new LookupExtractionFn(new MapLookupExtractor(map), true, null, true, "string"), null
                 )
             )
         )
@@ -479,7 +479,7 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithSimpleRenameAndMissingString()
   {
-    Map<Comparable, Comparable> map = new HashMap<>();
+    Map<String, String> map = new HashMap<>();
     map.put("automotive", "automotive0");
     map.put("business", "business0");
     map.put("entertainment", "entertainment0");
@@ -498,7 +498,7 @@ public class GroupByQueryRunnerTest
                 new ExtractionDimensionSpec(
                     "quality",
                     "alias",
-                    new LookupExtractionFn(new MapLookupExtractor(map, "string"), false, "MISSING", true, "string"),
+                    new LookupExtractionFn(new MapLookupExtractor(map), false, "MISSING", true, "string"),
                     null
                 )
             )
@@ -557,7 +557,7 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithSimpleRename()
   {
-    Map<Comparable, Comparable> map = new HashMap<>();
+    Map<String, String> map = new HashMap<>();
     map.put("automotive", "automotive0");
     map.put("business", "business0");
     map.put("entertainment", "entertainment0");
@@ -574,7 +574,7 @@ public class GroupByQueryRunnerTest
         .setDimensions(
             Lists.<DimensionSpec>newArrayList(
                 new ExtractionDimensionSpec(
-                    "quality", "alias", new LookupExtractionFn(new MapLookupExtractor(map, "string"), false, null, true, "string"), null
+                    "quality", "alias", new LookupExtractionFn(new MapLookupExtractor(map), false, null, true, "string"), null
                 )
             )
         )
@@ -3919,10 +3919,10 @@ public class GroupByQueryRunnerTest
                     "alias",
                     new LookupExtractionFn(
                         new MapLookupExtractor(
-                            ImmutableMap.<Comparable, Comparable>of(
+                            ImmutableMap.of(
                                 "mezzanine",
                                 "mezzanine0"
-                            ), "string"
+                            )
                         ), false, null, false, "string"
                     ),
                     null
@@ -3992,10 +3992,10 @@ public class GroupByQueryRunnerTest
                     "alias",
                     new LookupExtractionFn(
                         new MapLookupExtractor(
-                            ImmutableMap.<Comparable, Comparable>of(
+                            ImmutableMap.of(
                                 "mezzanine",
                                 "mezzanine0"
-                            ), "string"
+                            )
                         ), false, null, true, "string"
                     ),
                     null
@@ -4035,13 +4035,13 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithExtractionDimFilter()
   {
-    Map<Comparable, Comparable> extractionMap = new HashMap<>();
+    Map<String, String> extractionMap = new HashMap<>();
     extractionMap.put("automotive", "automotiveAndBusinessAndNewsAndMezzanine");
     extractionMap.put("business", "automotiveAndBusinessAndNewsAndMezzanine");
     extractionMap.put("mezzanine", "automotiveAndBusinessAndNewsAndMezzanine");
     extractionMap.put("news", "automotiveAndBusinessAndNewsAndMezzanine");
 
-    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, "string");
+    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap);
     LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true, "string");
 
     List<DimFilter> dimFilters = Lists.<DimFilter>newArrayList(
@@ -4102,7 +4102,7 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithExtractionDimFilterCaseMappingValueIsNullOrEmpty()
   {
-    Map<Comparable, Comparable> extractionMap = new HashMap<>();
+    Map<String, String> extractionMap = new HashMap<>();
     extractionMap.put("automotive", "automotive0");
     extractionMap.put("business", "business0");
     extractionMap.put("entertainment", "entertainment0");
@@ -4113,7 +4113,7 @@ public class GroupByQueryRunnerTest
     extractionMap.put("technology", "technology0");
     extractionMap.put("travel", "travel0");
 
-    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, "string");
+    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap);
     LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true, "string");
     GroupByQuery query = GroupByQuery.builder().setDataSource(QueryRunnerTestHelper.dataSource)
                                      .setQuerySegmentSpec(QueryRunnerTestHelper.firstToThird)
@@ -4148,8 +4148,8 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithExtractionDimFilterWhenSearchValueNotInTheMap()
   {
-    Map<Comparable, Comparable> extractionMap = new HashMap<>();
-    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, "string");
+    Map<String, String> extractionMap = new HashMap<>();
+    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap);
     LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true, "string");
 
     GroupByQuery query = GroupByQuery.builder().setDataSource(QueryRunnerTestHelper.dataSource)
@@ -4187,10 +4187,10 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithExtractionDimFilterKeyisNull()
   {
-    Map<Comparable, Comparable> extractionMap = new HashMap<>();
+    Map<String, String> extractionMap = new HashMap<>();
     extractionMap.put("", "NULLorEMPTY");
 
-    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, "string");
+    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap);
     LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true, "string");
 
     GroupByQuery query = GroupByQuery.builder().setDataSource(QueryRunnerTestHelper.dataSource)
@@ -4231,7 +4231,7 @@ public class GroupByQueryRunnerTest
   @Test
   public void testGroupByWithAggregatorFilterAndExtractionFunction()
   {
-    Map<Comparable, Comparable> extractionMap = new HashMap<>();
+    Map<String, String> extractionMap = new HashMap<>();
     extractionMap.put("automotive", "automotive0");
     extractionMap.put("business", "business0");
     extractionMap.put("entertainment", "entertainment0");
@@ -4242,7 +4242,7 @@ public class GroupByQueryRunnerTest
     extractionMap.put("technology", "technology0");
     extractionMap.put("travel", "travel0");
 
-    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, "string");
+    MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap);
     LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, "missing", true, "string");
     DimFilter filter = new ExtractionDimFilter("quality","mezzanineANDnews",lookupExtractionFn,null);
     GroupByQuery query = GroupByQuery.builder().setDataSource(QueryRunnerTestHelper.dataSource)

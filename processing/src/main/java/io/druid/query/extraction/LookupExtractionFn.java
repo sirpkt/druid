@@ -23,6 +23,7 @@ package io.druid.query.extraction;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
+import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.metamx.common.StringUtils;
 import io.druid.segment.dimension.DimensionType;
@@ -59,7 +60,7 @@ public class LookupExtractionFn extends FunctionalExtraction
           @Override
           public Comparable apply(Comparable input)
           {
-            return lookup.apply(DimensionType.fromString(dimType).getNullReplaced(input));
+            return lookup.apply(Strings.nullToEmpty((String) input));
           }
         },
         retainMissingValue,

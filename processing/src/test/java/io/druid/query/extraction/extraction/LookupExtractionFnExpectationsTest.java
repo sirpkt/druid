@@ -34,7 +34,7 @@ public class LookupExtractionFnExpectationsTest
   public void testMissingKeyIsNull()
   {
     final LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(
-        new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("foo", "bar"), "string"),
+        new MapLookupExtractor(ImmutableMap.of("foo", "bar")),
         true,
         null,
         false,
@@ -47,7 +47,7 @@ public class LookupExtractionFnExpectationsTest
   public void testMissingKeyIsReplaced()
   {
     final LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(
-        new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("foo", "bar"), "string"),
+        new MapLookupExtractor(ImmutableMap.of("foo", "bar")),
         false,
         "REPLACE",
         false,
@@ -60,7 +60,7 @@ public class LookupExtractionFnExpectationsTest
   public void testNullKeyIsMappable()
   {
     final LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(
-        new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("", "bar"), "string"),
+        new MapLookupExtractor(ImmutableMap.of("", "bar")),
         false,
         "REPLACE",
         false,
@@ -73,7 +73,7 @@ public class LookupExtractionFnExpectationsTest
   public void testNullValue()
   {
     final LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(
-        new MapLookupExtractor(ImmutableMap.<Comparable, Comparable>of("foo", ""), "string"),
+        new MapLookupExtractor(ImmutableMap.of("foo", "")),
         false,
         "REPLACE",
         false,
