@@ -67,7 +67,7 @@ public class RangeDimFilter implements DimFilter
         byte maxIncludedByte = maxIncluded ? (byte)1 : 0x0;
         byte alphaNumericByte = alphaNumeric ? (byte)1 : 0x0;
 
-        return ByteBuffer.allocate(6 + dimensionBytes.length + minBytes.length + maxBytes.length)
+        return ByteBuffer.allocate(7 + dimensionBytes.length + minBytes.length + maxBytes.length)
                 .put(DimFilterCacheHelper.RANGE_CACHE_ID)
                 .put(minIncludedByte)
                 .put(maxIncludedByte)

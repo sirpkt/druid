@@ -30,13 +30,14 @@ import io.druid.query.topn.AlphaNumericTopNMetricSpec;
 import io.druid.query.topn.LexicographicTopNMetricSpec;
 import io.druid.segment.ColumnSelectorFactory;
 import io.druid.segment.DimensionSelector;
+import io.druid.segment.data.Indexed;
 import io.druid.segment.data.IndexedInts;
 
 import java.util.Comparator;
 
 /**
  */
-public class RangeFilter implements Filter
+public class RangeFilter extends DimensionPredicateFilter
 {
   private final String dimension;
   private final String min, max;
@@ -52,6 +53,7 @@ public class RangeFilter implements Filter
       Boolean alphaNumeric
   )
   {
+    super(dimension, new RangePredicate(min, max, minIncluded, maxIncluded, alphaNumeric));
     this.dimension = dimension;
     this.min = min;
     this.max = max;
@@ -63,39 +65,36 @@ public class RangeFilter implements Filter
   @Override
   public ImmutableBitmap getBitmapIndex(BitmapIndexSelector selector)
   {
-    return selector.getBitmapIndex(dimension, value);
-  }
-
-  @Override
-  public ValueMatcher makeMatcher(ValueMatcherFactory factory)
-  {
-    return factory.makeValueMatcher(dimension, new RangePredicate(min, max, minIncluded, maxIncluded, alphaNumeric));
-  }
-
-  @Override
-  public ValueMatcher makeMatcher(ColumnSelectorFactory columnSelectorFactory)
-  {
-    final DimensionSelector dimensionSelector = columnSelectorFactory.makeDimensionSelector(dimension, null);
-
-    final int valueId = dimensionSelector.lookupId(value);
-    return new ValueMatcher()
-    {
-      @Override
-      public boolean matches()
-      {
-        final IndexedInts row = dimensionSelector.getRow();
-        final int size = row.size();
-        for (int i = 0; i < size; ++i) {
-          if (row.get(i) == valueId) {
-            return true;
-          }
-        }
-        return false;
+    if (alphaNumeric) {
+      return super.getBitmapIndex(selector);
+    } else {
+      Indexed<String> dimValues = selector.getDimensionValues(dimension);
+      ImmutableBitmap retBitmap = selector.getBitmapFactory().makeEmptyImmutableBitmap();
+      if (dimValues == null) {
+        return retBitmap;
       }
-    };
+
+      int minId = 0;
+      int maxId = dimValues.size() - 1;
+
+      if (min != null) {
+        minId = dimValues.indexOf(min);
+        minId = minId < 0 ? -minId - 1 : (minIncluded ? minId : minId + 1);
+      }
+      if (max != null) {
+        maxId = dimValues.indexOf(max);
+        maxId = maxId < 0 ? -maxId - 2 : (maxIncluded ? maxId : maxId - 1);
+      }
+      for (int id = minId; id <= maxId; id++) {
+        String value = dimValues.get(id);
+        ImmutableBitmap bitmap = selector.getBitmapIndex(dimension, value);
+        retBitmap = retBitmap.union(bitmap);
+      }
+      return retBitmap;
+    }
   }
 
-  private class RangePredicate implements Predicate<String>
+  private static class RangePredicate implements Predicate<String>
   {
     private final String min, max;
     private final boolean minIncluded, maxIncluded;

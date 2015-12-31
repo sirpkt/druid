@@ -101,7 +101,11 @@ public class Filters
 
       filter = new OrFilter(listFilters);
     } else if (dimFilter instanceof RangeDimFilter) {
-
+      final RangeDimFilter rangeDimFilter = (RangeDimFilter)dimFilter;
+      filter = new RangeFilter(rangeDimFilter.getDimension(),
+          rangeDimFilter.getMin(), rangeDimFilter.getMax(),
+          rangeDimFilter.isMinIncluded(), rangeDimFilter.isMaxIncluded(),
+          rangeDimFilter.isAlphaNumeric());
     }
 
     return filter;

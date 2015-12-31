@@ -42,10 +42,14 @@ public class NotFilter implements Filter
   @Override
   public ImmutableBitmap getBitmapIndex(BitmapIndexSelector selector)
   {
-    return selector.getBitmapFactory().complement(
+    ImmutableBitmap bitmap = baseFilter.getBitmapIndex(selector);
+    int numRows = selector.getNumRows();
+    ImmutableBitmap retval = selector.getBitmapFactory().complement(bitmap, numRows);
+    return retval;
+/*   return selector.getBitmapFactory().complement(
         baseFilter.getBitmapIndex(selector),
         selector.getNumRows()
-    );
+    );*/
   }
 
   @Override
