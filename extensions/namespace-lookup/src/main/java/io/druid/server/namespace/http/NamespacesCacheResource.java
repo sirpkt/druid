@@ -21,15 +21,19 @@ package io.druid.server.namespace.http;
 
 import com.fasterxml.jackson.jaxrs.smile.SmileMediaTypes;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
+import com.metamx.common.IAE;
+import com.metamx.common.ISE;
 import com.metamx.common.logger.Logger;
+import com.sun.org.apache.regexp.internal.RE;
+import io.druid.query.extraction.namespace.ExtractionNamespace;
 import io.druid.server.namespace.cache.NamespaceExtractionCacheManager;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.Collection;
 
 @Path("/druid/v1/namespaces")
 public class NamespacesCacheResource
@@ -46,10 +50,53 @@ public class NamespacesCacheResource
   @Produces({ MediaType.APPLICATION_JSON, SmileMediaTypes.APPLICATION_JACKSON_SMILE})
   public Response getNamespaces(){
     try{
-      return Response.ok().entity(namespaceExtractionCacheManager.getKnownNamespaces()).build();
+      return Response.ok().entity(namespaceExtractionCacheManager.getKnownNamespaceNames()).build();
     }catch (Exception ex){
       log.error("Can not get the list of known namespaces");
       return Response.serverError().entity(Strings.nullToEmpty(ex.getMessage())).build();
+    }
+  }
+
+  @POST
+  @Path("/add")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response namespacePost(final ExtractionNamespace namespace) {
+    Collection<ExtractionNamespace> namespaces = namespaceExtractionCacheManager.getKnownNamespaces();
+    namespaces.add(namespace);
+    try {
+      namespaceExtractionCacheManager.scheduleOrUpdate(namespaces);
+
+      return Response.ok(ImmutableMap.of("namespace", namespace.getNamespace())).build();
+    }
+    catch (IAE iae) {
+      return Response.status(Response.Status.BAD_REQUEST)
+                     .entity(ImmutableMap.of("error", "Illegal argument!"))
+                     .build();
+    }
+    catch (ISE ise) {
+      return Response.status(Response.Status.BAD_REQUEST)
+                     .entity(ImmutableMap.of("error", "Invalid namespace type!"))
+                     .build();
+    }
+  }
+
+  @POST
+  @Path("/delete")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response namespaceDelete(final ExtractionNamespace namespace) {
+    Collection<ExtractionNamespace> namespaces = namespaceExtractionCacheManager.getKnownNamespaces();
+    namespaces.remove(namespace);
+    try {
+      namespaceExtractionCacheManager.scheduleOrUpdate(namespaces);
+
+      return Response.ok(ImmutableMap.of("namespace", namespace.getNamespace())).build();
+    }
+    catch (ISE ise) {
+      return Response.status(Response.Status.BAD_REQUEST)
+                     .entity(ImmutableMap.of("error", String.format("cannot remove namespace[%s]!", namespace.getNamespace())))
+                     .build();
     }
   }
 }

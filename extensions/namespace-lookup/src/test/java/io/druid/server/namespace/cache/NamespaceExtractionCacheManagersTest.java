@@ -24,9 +24,6 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.metamx.common.lifecycle.Lifecycle;
 import com.metamx.common.logger.Logger;
 import io.druid.query.extraction.namespace.ExtractionNamespace;
@@ -45,7 +42,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -141,7 +137,7 @@ public class NamespaceExtractionCacheManagersTest
   public void testCacheList()
   {
     List<String> nsList = new ArrayList<String>(NamespaceExtractionCacheManagersTest.nsList);
-    List<String> retvalList = Lists.newArrayList(extractionCacheManager.getKnownNamespaces());
+    List<String> retvalList = Lists.newArrayList(extractionCacheManager.getKnownNamespaceNames());
     Collections.sort(nsList);
     Collections.sort(retvalList);
     Assert.assertArrayEquals(nsList.toArray(), retvalList.toArray());

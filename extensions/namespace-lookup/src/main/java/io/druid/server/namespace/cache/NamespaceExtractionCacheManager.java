@@ -42,11 +42,7 @@ import io.druid.query.extraction.namespace.ExtractionNamespace;
 import io.druid.query.extraction.namespace.ExtractionNamespaceFunctionFactory;
 
 import javax.annotation.Nullable;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -469,8 +465,18 @@ public abstract class NamespaceExtractionCacheManager
     }
   }
 
-  public Collection<String> getKnownNamespaces()
+  public Collection<String> getKnownNamespaceNames()
   {
     return fnCache.keySet();
+  }
+
+  public Collection<ExtractionNamespace> getKnownNamespaces()
+  {
+    LinkedList<ExtractionNamespace> namespaces = new LinkedList();
+
+    for (Map.Entry<String, NamespaceImplData> entry: implData.entrySet()) {
+      namespaces.add(entry.getValue().namespace);
+    }
+    return namespaces;
   }
 }
