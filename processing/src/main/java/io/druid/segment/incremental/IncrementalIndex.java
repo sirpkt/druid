@@ -355,6 +355,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
       boolean deserializeComplexMetrics
   );
 
+  // Note: This method needs to be thread safe.
   protected abstract Integer addToFacts(
       AggregatorFactory[] metrics,
       boolean deserializeComplexMetrics,
@@ -623,19 +624,20 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
   @Override
   public Iterator<Row> iterator()
   {
-    return iterableWithPostAggregations(null).iterator();
+    return iterableWithPostAggregations(null, false).iterator();
   }
 
-  public Iterable<Row> iterableWithPostAggregations(final List<PostAggregator> postAggs)
+  public Iterable<Row> iterableWithPostAggregations(final List<PostAggregator> postAggs, final boolean descending)
   {
     final List<String> dimensions = getDimensionNames();
+    final ConcurrentNavigableMap<TimeAndDims, Integer> facts = descending ? getFacts().descendingMap() : getFacts();
     return new Iterable<Row>()
     {
       @Override
       public Iterator<Row> iterator()
       {
         return Iterators.transform(
-            getFacts().entrySet().iterator(),
+            facts.entrySet().iterator(),
             new Function<Map.Entry<TimeAndDims, Integer>, Row>()
             {
               @Override
