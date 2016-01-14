@@ -26,7 +26,6 @@ import com.google.inject.Inject;
 import com.metamx.common.IAE;
 import com.metamx.common.ISE;
 import com.metamx.common.logger.Logger;
-import com.sun.org.apache.regexp.internal.RE;
 import io.druid.query.extraction.namespace.ExtractionNamespace;
 import io.druid.server.namespace.cache.NamespaceExtractionCacheManager;
 
@@ -67,17 +66,12 @@ public class NamespacesCacheResource
     try {
       namespaceExtractionCacheManager.scheduleOrUpdate(namespaces);
 
-      return Response.ok(ImmutableMap.of("namespace", namespace.getNamespace())).build();
+      return Response.ok().entity(ImmutableMap.of("namespace", namespace.getNamespace())).build();
     }
-    catch (IAE iae) {
+    catch (Exception e) {
       return Response.status(Response.Status.BAD_REQUEST)
-                     .entity(ImmutableMap.of("error", "Illegal argument!"))
-                     .build();
-    }
-    catch (ISE ise) {
-      return Response.status(Response.Status.BAD_REQUEST)
-                     .entity(ImmutableMap.of("error", "Invalid namespace type!"))
-                     .build();
+          .entity(ImmutableMap.of("error", e.getMessage()))
+          .build();
     }
   }
 
@@ -91,12 +85,12 @@ public class NamespacesCacheResource
     try {
       namespaceExtractionCacheManager.scheduleOrUpdate(namespaces);
 
-      return Response.ok(ImmutableMap.of("namespace", namespace.getNamespace())).build();
+      return Response.ok().entity(ImmutableMap.of("namespace", namespace.getNamespace())).build();
     }
-    catch (ISE ise) {
+    catch (Exception e) {
       return Response.status(Response.Status.BAD_REQUEST)
-                     .entity(ImmutableMap.of("error", String.format("cannot remove namespace[%s]!", namespace.getNamespace())))
-                     .build();
+          .entity(ImmutableMap.of("error", e.getMessage()))
+          .build();
     }
   }
 }
