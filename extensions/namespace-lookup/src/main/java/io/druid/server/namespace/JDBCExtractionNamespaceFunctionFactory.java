@@ -120,6 +120,7 @@ public class JDBCExtractionNamespaceFunctionFactory
         final String table = namespace.getTable();
         final String valueColumn = namespace.getValueColumn();
         final String keyColumn = namespace.getKeyColumn();
+        final String DBquery = namespace.getQuery();
 
         final List<Pair<String, String>> pairs = dbi.withHandle(
             new HandleCallback<List<Pair<String, String>>>()
@@ -128,12 +129,16 @@ public class JDBCExtractionNamespaceFunctionFactory
               public List<Pair<String, String>> withHandle(Handle handle) throws Exception
               {
                 final String query;
-                query = String.format(
-                    "SELECT %s, %s FROM %s",
-                    keyColumn,
-                    valueColumn,
-                    table
-                );
+                if (DBquery != null) {
+                  query = DBquery;
+                } else {
+                  query = String.format(
+                      "SELECT %s, %s FROM %s",
+                      keyColumn,
+                      valueColumn,
+                      table
+                  );
+                }
                 return handle
                     .createQuery(
                         query
@@ -148,7 +153,7 @@ public class JDBCExtractionNamespaceFunctionFactory
                               final StatementContext ctx
                           ) throws SQLException
                           {
-                            return new Pair<String, String>(r.getString(keyColumn), r.getString(valueColumn));
+                            return new Pair<String, String>(r.getString(1), r.getString(2));
                           }
                         }
                     ).list();

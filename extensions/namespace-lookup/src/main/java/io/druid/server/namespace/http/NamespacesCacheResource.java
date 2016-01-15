@@ -64,6 +64,7 @@ public class NamespacesCacheResource
     Collection<ExtractionNamespace> namespaces = namespaceExtractionCacheManager.getKnownNamespaces();
     namespaces.add(namespace);
     try {
+      log.info("try to add namespace[%s]", namespace.getNamespace());
       namespaceExtractionCacheManager.scheduleOrUpdate(namespaces);
 
       return Response.ok().entity(ImmutableMap.of("namespace", namespace.getNamespace())).build();
@@ -76,13 +77,14 @@ public class NamespacesCacheResource
   }
 
   @POST
-  @Path("/delete")
+  @Path("/remove")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
   public Response namespaceDelete(final ExtractionNamespace namespace) {
     Collection<ExtractionNamespace> namespaces = namespaceExtractionCacheManager.getKnownNamespaces();
     namespaces.remove(namespace);
     try {
+      log.info("try to remove namespace[%s]", namespace.getNamespace());
       namespaceExtractionCacheManager.scheduleOrUpdate(namespaces);
 
       return Response.ok().entity(ImmutableMap.of("namespace", namespace.getNamespace())).build();

@@ -45,6 +45,8 @@ public class JDBCExtractionNamespace implements ExtractionNamespace
   @JsonProperty
   private final String valueColumn;
   @JsonProperty
+  private final String query;
+  @JsonProperty
   private final String tsColumn;
   @JsonProperty
   private final String namespace;
@@ -57,12 +59,14 @@ public class JDBCExtractionNamespace implements ExtractionNamespace
       final String namespace,
       @NotNull @JsonProperty(value = "connectorConfig", required = true)
       final MetadataStorageConnectorConfig connectorConfig,
-      @NotNull @JsonProperty(value = "table", required = true)
+      @JsonProperty(value = "table", required = true)
       final String table,
-      @NotNull @JsonProperty(value = "keyColumn", required = true)
+      @JsonProperty(value = "keyColumn", required = false)
       final String keyColumn,
-      @NotNull @JsonProperty(value = "valueColumn", required = true)
+      @JsonProperty(value = "valueColumn", required = false)
       final String valueColumn,
+      @JsonProperty(value = "query", required = false)
+      final String query,
       @Nullable @JsonProperty(value = "tsColumn", required = false)
       final String tsColumn,
       @Min(0) @Nullable @JsonProperty(value = "pollPeriod", required = false)
@@ -71,9 +75,12 @@ public class JDBCExtractionNamespace implements ExtractionNamespace
   {
     this.connectorConfig = Preconditions.checkNotNull(connectorConfig, "connectorConfig");
     Preconditions.checkNotNull(connectorConfig.getConnectURI(), "connectorConfig.connectURI");
+    Preconditions.checkArgument((keyColumn != null && valueColumn != null)||(query != null),
+        "(keyColumn, valueColumn) or query should be specified");
     this.table = Preconditions.checkNotNull(table, "table");
-    this.keyColumn = Preconditions.checkNotNull(keyColumn, "keyColumn");
-    this.valueColumn = Preconditions.checkNotNull(valueColumn, "valueColumn");
+    this.keyColumn = keyColumn;
+    this.valueColumn = valueColumn;
+    this.query = query;
     this.tsColumn = tsColumn;
     this.namespace = Preconditions.checkNotNull(namespace, "namespace");
     this.pollPeriod = pollPeriod == null ? new Period(0L) : pollPeriod;
@@ -105,6 +112,11 @@ public class JDBCExtractionNamespace implements ExtractionNamespace
     return valueColumn;
   }
 
+  public String getQuery()
+  {
+    return query;
+  }
+
   public String getTsColumn()
   {
     return tsColumn;
@@ -119,16 +131,27 @@ public class JDBCExtractionNamespace implements ExtractionNamespace
   @Override
   public String toString()
   {
-    return String.format(
-        "JDBCExtractionNamespace = { namespace = %s, connectorConfig = { %s }, table = %s, keyColumn = %s, valueColumn = %s, tsColumn = %s, pollPeriod = %s}",
-        namespace,
-        connectorConfig.toString(),
-        table,
-        keyColumn,
-        valueColumn,
-        tsColumn,
-        pollPeriod
-    );
+    if (query != null) {
+      return String.format(
+          "JDBCExtractionNamespace = { namespace = %s, connectorConfig = { %s }, query = %s, tsColumn = %s, pollPeriod = %s}",
+          namespace,
+          connectorConfig.toString(),
+          query,
+          tsColumn,
+          pollPeriod
+      );
+    } else {
+      return String.format(
+          "JDBCExtractionNamespace = { namespace = %s, connectorConfig = { %s }, table = %s, keyColumn = %s, valueColumn = %s, tsColumn = %s, pollPeriod = %s}",
+          namespace,
+          connectorConfig.toString(),
+          table,
+          keyColumn,
+          valueColumn,
+          tsColumn,
+          pollPeriod
+      );
+    }
   }
 
   @Override
@@ -155,6 +178,9 @@ public class JDBCExtractionNamespace implements ExtractionNamespace
     if (!valueColumn.equals(that.valueColumn)) {
       return false;
     }
+    if (!query.equals(that.query)) {
+      return false;
+    }
     if (tsColumn != null ? !tsColumn.equals(that.tsColumn) : that.tsColumn != null) {
       return false;
     }
@@ -169,9 +195,10 @@ public class JDBCExtractionNamespace implements ExtractionNamespace
   public int hashCode()
   {
     int result = connectorConfig.hashCode();
-    result = 31 * result + table.hashCode();
-    result = 31 * result + keyColumn.hashCode();
-    result = 31 * result + valueColumn.hashCode();
+    result = 31 * result + (table != null ? table.hashCode() : 0);
+    result = 31 * result + (keyColumn != null ? keyColumn.hashCode() : 0);
+    result = 31 * result + (valueColumn != null ? valueColumn.hashCode() : 0);
+    result = 31 * result + (query != null ? query.hashCode() : 0);
     result = 31 * result + (tsColumn != null ? tsColumn.hashCode() : 0);
     result = 31 * result + namespace.hashCode();
     result = 31 * result + pollPeriod.hashCode();
