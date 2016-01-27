@@ -28,16 +28,19 @@ import io.druid.query.filter.ValueMatcher;
 import io.druid.query.filter.ValueMatcherFactory;
 import io.druid.segment.ColumnSelectorFactory;
 import io.druid.segment.data.Indexed;
+import io.druid.segment.data.ListIndexed;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.ScriptableObject;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 public class JavaScriptFilter implements Filter
 {
   private final JavaScriptPredicate predicate;
   private final String[] dimension;
+  protected static final ListIndexed EMPTY_STR_DIM_VAL = new ListIndexed<>(Arrays.asList(new String[]{null}), String.class);
 
   public JavaScriptFilter(String[] dimension, final String script)
   {
@@ -52,15 +55,16 @@ public class JavaScriptFilter implements Filter
     try {
       ImmutableBitmap bitmap;
 
-      boolean hasEmptyDimension = false;
+      boolean allEmptyDimensions = true;
       Indexed<String> [] dimValuesList = new Indexed[dimension.length];
       Iterator<String> [] dimValuesIterator = new Iterator[dimension.length];
       String[] currentDim = new String[dimension.length];
       for(int idx = 0; idx < dimension.length; idx++) {
         dimValuesList[idx] = selector.getDimensionValues(dimension[idx]);
-        if (dimValuesList[idx].size() == 0) {
-          hasEmptyDimension = true;
-          break;
+        if (dimValuesList[idx].size() > 0) {
+          allEmptyDimensions = false;
+        } else {
+          dimValuesList[idx] = EMPTY_STR_DIM_VAL;
         }
         dimValuesIterator[idx] = dimValuesList[idx].iterator();
         if (idx != 0) {
@@ -69,7 +73,7 @@ public class JavaScriptFilter implements Filter
       }
 
       bitmap = selector.getBitmapFactory().makeEmptyImmutableBitmap();
-      if (!hasEmptyDimension) {
+      if (!allEmptyDimensions) {
         int iteratingIndex = 0;
         while(true) {
           // advance iterator
