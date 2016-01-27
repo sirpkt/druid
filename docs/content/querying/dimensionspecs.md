@@ -308,6 +308,49 @@ This allows distinguishing between a null dimension and a lookup resulting in a 
 For example, specifying `{"":"bar","bat":"baz"}` with dimension values `[null, "foo", "bat"]` and replacing missing values with `"oof"` will yield results of `["bar", "oof", "baz"]`.
 Omitting the empty string key will cause the missing value to take over. For example, specifying `{"bat":"baz"}` with dimension values `[null, "foo", "bat"]` and replacing missing values with `"oof"` will yield results of `["oof", "oof", "baz"]`.
 
+### Cascade Extraction Function
+
+Provides chained execution of extraction functions.
+
+A property of `extractionFns` contains an array of any extraction functions, which is executed in the array index order.
+
+Example for chaining [regular expression extraction function](#regular-expression-extraction-function), [javascript extraction function](#javascript-extraction-function), and [substring extraction function](#substring-extraction-function) is as followings.
+
+```json
+{
+  "type" : "cascade", 
+  "extractionFns": [
+    { 
+      "type" : "regex", 
+      "expr" : "/([^/]+)/", 
+      "replaceMissingValues": false, 
+      "replaceMissingValuesWith": null
+    },
+    { 
+      "type" : "javascript", 
+      "function" : "function(str) { return \"the \".concat(str) }" 
+    },
+    { 
+      "type" : "substring", 
+      "index" : 0, "length" : 7 
+    }
+  ]
+}
+```
+
+It will transform dimension values with specified extraction functions in the order named.
+For example, `'/druid/prod/historical'` is transformed to `'the dru'` as regular expression extraction function first transforms it to `'druid'` and then, javascript extraction function transforms it to `'the druid'`, and lastly, substring extraction function transforms it to `'the dru'`. 
+
+### String Format Extraction Function
+
+Returns the dimension value formatted according to the given format string.
+
+```json
+{ "type" : "stringFormat", "format" : <sprintf_expression> }
+```
+
+For example if you want to concat "[" and "]" before and after the actual dimension value, you need to specify "[%s]" as format string.
+
 ### Filtering DimensionSpecs
 
 These are only valid for multi-valued dimensions. If you have a row in druid that has a multi-valued dimension with values ["v1", "v2", "v3"] and you send a groupBy/topN query grouping by that dimension with [query filter](filter.html) for value "v1". In the response you will get 3 rows containing "v1", "v2" and "v3". This behavior might be unintuitive for some use cases.
@@ -317,7 +360,7 @@ Then groupBy/topN processing pipeline "explodes" all multi-valued dimensions res
 
 In addition to "query filter" which efficiently selects the rows to be processed, you can use the filtering dimension spec to filter for specific values within the values of a multi-valued dimension. These dimensionSpecs take a delegate DimensionSpec and a filtering criteria. From the "exploded" rows, only rows matching the given filtering criteria are returned in the query result.
 
-The following filtered dimension spec acts as a whiltelist or blacklist for values as per the "isWhitelist" attribute value.
+The following filtered dimension spec acts as a whitelist or blacklist for values as per the "isWhitelist" attribute value.
 ```json
 { "type" : "listFiltered", "delegate" : <dimensionSpec>, "values": <array of strings>, "isWhitelist": <optional attribute for true/false, default is true> }
 ```
@@ -328,3 +371,23 @@ Following filtered dimension spec retains only the values matching regex. Note t
 ```
 
 For more details and examples, see [multi-valued dimensions](multi-valued-dimensions.html).
+
+### Upper and Lower extraction functions.
+
+Returns the dimension values as all upper case or lower case.
+Optionally user can specify the language to use in order to perform upper or lower transformation 
+
+```json
+{
+  "type" : "upper",
+  "locale":"fr"
+}
+```
+
+or without setting "locale" (in this case, the current value of the default locale for this instance of the Java Virtual Machine.)
+
+```json
+{
+  "type" : "lower"
+}
+```

@@ -17,14 +17,27 @@
  * under the License.
  */
 
-package io.druid.indexing.overlord.autoscaling;
+package io.druid.server.initialization.jetty;
 
-import com.metamx.common.concurrent.ScheduledExecutorFactory;
-import io.druid.indexing.overlord.RemoteTaskRunner;
 
-/**
- */
-public interface ResourceManagementSchedulerFactory
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.google.common.collect.ImmutableMap;
+
+import javax.ws.rs.core.Response;
+import javax.ws.rs.ext.ExceptionMapper;
+import javax.ws.rs.ext.Provider;
+
+@Provider
+public class CustomExceptionMapper implements ExceptionMapper<JsonMappingException>
 {
-  public ResourceManagementScheduler build(RemoteTaskRunner runner, ScheduledExecutorFactory executorFactory);
+  @Override
+  public Response toResponse(JsonMappingException exception)
+  {
+    return Response.status(Response.Status.BAD_REQUEST)
+                   .entity(ImmutableMap.of(
+                       "error",
+                       exception.getMessage() == null ? "unknown json mapping exception" : exception.getMessage()
+                   ))
+                   .build();
+  }
 }

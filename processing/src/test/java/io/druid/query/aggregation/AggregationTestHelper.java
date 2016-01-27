@@ -132,10 +132,6 @@ public class AggregationTestHelper
   {
     ObjectMapper mapper = new DefaultObjectMapper();
 
-    for(Module mod : jsonModulesToRegister) {
-      mapper.registerModule(mod);
-    }
-
     Supplier<GroupByQueryConfig> configSupplier = Suppliers.ofInstance(new GroupByQueryConfig());
     StupidPool<ByteBuffer> pool = new StupidPool<>(
         new Supplier<ByteBuffer>()
@@ -330,7 +326,7 @@ public class AggregationTestHelper
         catch (IndexSizeExceededException ex) {
           File tmp = tempFolder.newFolder();
           toMerge.add(tmp);
-          indexMerger.persist(index, tmp, null, new IndexSpec());
+          indexMerger.persist(index, tmp, new IndexSpec());
           index.close();
           index = new OnheapIncrementalIndex(minTimestamp, gran, metrics, deserializeComplexMetrics, maxRowCount);
         }
@@ -339,7 +335,7 @@ public class AggregationTestHelper
       if (toMerge.size() > 0) {
         File tmp = tempFolder.newFolder();
         toMerge.add(tmp);
-        indexMerger.persist(index, tmp, null, new IndexSpec());
+        indexMerger.persist(index, tmp, new IndexSpec());
 
         List<QueryableIndex> indexes = new ArrayList<>(toMerge.size());
         for (File file : toMerge) {
@@ -351,7 +347,7 @@ public class AggregationTestHelper
           qi.close();
         }
       } else {
-        indexMerger.persist(index, outDir, null, new IndexSpec());
+        indexMerger.persist(index, outDir, new IndexSpec());
       }
     }
     finally {

@@ -44,6 +44,7 @@ import io.druid.segment.ColumnSelectorFactory;
 import io.druid.segment.DimensionSelector;
 import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.LongColumnSelector;
+import io.druid.segment.Metadata;
 import io.druid.segment.ObjectColumnSelector;
 import io.druid.segment.column.Column;
 import io.druid.segment.column.ColumnCapabilities;
@@ -262,6 +263,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
   private final AggregatorFactory[] metrics;
   private final AggregatorType[] aggs;
   private final boolean deserializeComplexMetrics;
+  private final Metadata metadata;
 
   private final Map<String, MetricDesc> metricDescs;
   private final Map<String, DimensionDesc> dimensionDescs;
@@ -298,6 +300,8 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     this.metrics = incrementalIndexSchema.getMetrics();
     this.rowTransformers = new CopyOnWriteArrayList<>();
     this.deserializeComplexMetrics = deserializeComplexMetrics;
+
+    this.metadata = new Metadata().setAggregators(getCombiningAggregators(metrics));
 
     this.aggs = initAggs(metrics, rowSupplier, deserializeComplexMetrics);
     this.columnCapabilities = Maps.newHashMap();
@@ -355,6 +359,7 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
       boolean deserializeComplexMetrics
   );
 
+  // Note: This method needs to be thread safe.
   protected abstract Integer addToFacts(
       AggregatorFactory[] metrics,
       boolean deserializeComplexMetrics,
@@ -396,10 +401,10 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
   /**
    * Adds a new row.  The row might correspond with another row that already exists, in which case this will
    * update that row instead of inserting a new one.
-   * <p/>
-   * <p/>
+   * <p>
+   * <p>
    * Calls to add() are thread safe.
-   * <p/>
+   * <p>
    *
    * @param row the row of data to add
    *
@@ -564,7 +569,8 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
 
   public String getMetricType(String metric)
   {
-    return metricDescs.get(metric).getType();
+    final MetricDesc metricDesc = metricDescs.get(metric);
+    return metricDesc != null ? metricDesc.getType() : null;
   }
 
   public Interval getInterval()
@@ -594,6 +600,36 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     return dimSpec == null ? null : dimSpec.getIndex();
   }
 
+  public List<String> getDimensionOrder()
+  {
+    synchronized (dimensionDescs) {
+      return ImmutableList.copyOf(dimensionDescs.keySet());
+    }
+  }
+
+  /*
+   * Currently called to initialize IncrementalIndex dimension order during index creation
+   * Index dimension ordering could be changed to initalize from DimensionsSpec after resolution of
+   * https://github.com/druid-io/druid/issues/2011
+   */
+  public void loadDimensionIterable(Iterable<String> oldDimensionOrder)
+  {
+    synchronized (dimensionDescs) {
+      if (!dimensionDescs.isEmpty()) {
+        throw new ISE("Cannot load dimension order when existing order[%s] is not empty.", dimensionDescs.keySet());
+      }
+      for (String dim : oldDimensionOrder) {
+        if (dimensionDescs.get(dim) == null) {
+          ColumnCapabilitiesImpl capabilities = new ColumnCapabilitiesImpl();
+          capabilities.setType(ValueType.STRING);
+          columnCapabilities.put(dim, capabilities);
+          DimensionDesc desc = new DimensionDesc(dimensionDescs.size(), dim, newDimDim(dim), capabilities);
+          dimensionDescs.put(dim, desc);
+        }
+      }
+    }
+  }
+
   public List<String> getMetricNames()
   {
     return ImmutableList.copyOf(metricDescs.keySet());
@@ -620,22 +656,37 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     return getFacts().subMap(start, end);
   }
 
+  public Metadata getMetadata()
+  {
+    return metadata;
+  }
+
+  private static AggregatorFactory[] getCombiningAggregators(AggregatorFactory[] aggregators)
+  {
+    AggregatorFactory[] combiningAggregators = new AggregatorFactory[aggregators.length];
+    for (int i = 0; i < aggregators.length; i++) {
+      combiningAggregators[i] = aggregators[i].getCombiningFactory();
+    }
+    return combiningAggregators;
+  }
+
   @Override
   public Iterator<Row> iterator()
   {
-    return iterableWithPostAggregations(null).iterator();
+    return iterableWithPostAggregations(null, false).iterator();
   }
 
-  public Iterable<Row> iterableWithPostAggregations(final List<PostAggregator> postAggs)
+  public Iterable<Row> iterableWithPostAggregations(final List<PostAggregator> postAggs, final boolean descending)
   {
     final List<String> dimensions = getDimensionNames();
+    final ConcurrentNavigableMap<TimeAndDims, Integer> facts = descending ? getFacts().descendingMap() : getFacts();
     return new Iterable<Row>()
     {
       @Override
       public Iterator<Row> iterator()
       {
         return Iterators.transform(
-            getFacts().entrySet().iterator(),
+            facts.entrySet().iterator(),
             new Function<Map.Entry<TimeAndDims, Integer>, Row>()
             {
               @Override
@@ -883,13 +934,10 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
     public int compareTo(TimeAndDims rhs)
     {
       int retVal = Longs.compare(timestamp, rhs.timestamp);
-
-      if (retVal == 0) {
-        retVal = Ints.compare(dims.length, rhs.dims.length);
-      }
+      int numComparisons = Math.min(dims.length, rhs.dims.length);
 
       int index = 0;
-      while (retVal == 0 && index < dims.length) {
+      while (retVal == 0 && index < numComparisons) {
         String[] lhsVals = dims[index];
         String[] rhsVals = rhs.dims[index];
 
@@ -913,6 +961,10 @@ public abstract class IncrementalIndex<AggregatorType> implements Iterable<Row>,
           ++valsIndex;
         }
         ++index;
+      }
+
+      if (retVal == 0) {
+        return Ints.compare(dims.length, rhs.dims.length);
       }
 
       return retVal;

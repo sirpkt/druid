@@ -12,7 +12,7 @@ In this tutorial, we will set up other types of Druid nodes and external depende
 ## Downloading Druid
 If you followed the first tutorial, you should already have Druid downloaded. If not, let's go back and do that first.
 
-You can download the latest version of druid [here](http://druid.io/downloads.html). You can also [Build From Source](../development/build.html) and grab the tarball from services/target/druid-<version>-bin.tar.gz.
+You can download the latest version of druid [here](http://druid.io/downloads.html). You can also [Build From Source](../development/build.html) and grab the tarball from distribution/target/druid-<version>-bin.tar.gz.
 
 Either way, once you have the tarball, untar the contents within by issuing:
 
@@ -35,9 +35,9 @@ For deep storage, we will use the local disk in this tutorial, but for productio
 * Install zookeeper.
 
 ```bash
-curl http://www.gtlib.gatech.edu/pub/apache/zookeeper/zookeeper-3.4.7/zookeeper-3.4.7.tar.gz -o zookeeper-3.4.7.tar.gz
-tar xzf zookeeper-3.4.7.tar.gz
-cd zookeeper-3.4.7
+curl http://www.gtlib.gatech.edu/pub/apache/zookeeper/zookeeper-3.4.6/zookeeper-3.4.6.tar.gz -o zookeeper-3.4.6.tar.gz
+tar xzf zookeeper-3.4.6.tar.gz
+cd zookeeper-3.4.6
 cp conf/zoo_sample.cfg conf/zoo.cfg
 ./bin/zkServer.sh start
 cd ..
@@ -95,7 +95,7 @@ In the directory, there should be a `common.runtime.properties` file with the fo
 
 ```
 # Extensions
-druid.extensions.coordinates=["io.druid.extensions:druid-examples","io.druid.extensions:druid-kafka-eight"]
+druid.extensions.loadList=["druid-examples","druid-kafka-eight"]
 
 # Zookeeper
 druid.zk.service.host=localhost

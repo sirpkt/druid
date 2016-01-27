@@ -23,6 +23,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.metamx.collections.spatial.search.Bound;
@@ -40,6 +41,7 @@ import io.druid.segment.Cursor;
 import io.druid.segment.DimensionSelector;
 import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.LongColumnSelector;
+import io.druid.segment.Metadata;
 import io.druid.segment.NullDimensionSelector;
 import io.druid.segment.ObjectColumnSelector;
 import io.druid.segment.SingleScanTimeDimSelector;
@@ -147,13 +149,20 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
   }
 
   @Override
+  public String getColumnTypeName(String column)
+  {
+    final String metricType = index.getMetricType(column);
+    return metricType != null ? metricType : getColumnCapabilities(column).getType().toString();
+  }
+
+  @Override
   public DateTime getMaxIngestedEventTime()
   {
     return index.getMaxIngestedEventTime();
   }
 
   @Override
-  public Sequence<Cursor> makeCursors(final Filter filter, final Interval interval, final QueryGranularity gran)
+  public Sequence<Cursor> makeCursors(final Filter filter, final Interval interval, final QueryGranularity gran, final boolean descending)
   {
     if (index.isEmpty()) {
       return Sequences.empty();
@@ -179,8 +188,13 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
 
     final Interval actualInterval = actualIntervalTmp;
 
+    Iterable<Long> iterable = gran.iterable(actualInterval.getStartMillis(), actualInterval.getEndMillis());
+    if (descending) {
+      // might be better to be included in granularity#iterable
+      iterable = Lists.reverse(ImmutableList.copyOf(iterable));
+    }
     return Sequences.map(
-        Sequences.simple(gran.iterable(actualInterval.getStartMillis(), actualInterval.getEndMillis())),
+        Sequences.simple(iterable),
         new Function<Long, Cursor>()
         {
           EntryHolder currEntry = new EntryHolder();
@@ -212,6 +226,9 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                         Math.min(actualInterval.getEndMillis(), gran.next(input)), new String[][]{}
                     )
                 );
+                if (descending) {
+                  cursorMap = cursorMap.descendingMap();
+                }
                 time = gran.toDateTime(input);
 
                 reset();
@@ -309,7 +326,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                 final ExtractionFn extractionFn = dimensionSpec.getExtractionFn();
 
                 if (dimension.equals(Column.TIME_COLUMN_NAME)) {
-                  return new SingleScanTimeDimSelector(makeLongColumnSelector(dimension), extractionFn);
+                  return new SingleScanTimeDimSelector(makeLongColumnSelector(dimension), extractionFn, descending);
                 }
 
                 final IncrementalIndex.DimDim dimValLookup = index.getDimensionValues(dimension);
@@ -777,5 +794,11 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
         }
       };
     }
+  }
+
+  @Override
+  public Metadata getMetadata()
+  {
+    return index.getMetadata();
   }
 }

@@ -28,13 +28,12 @@ import com.google.common.collect.Ordering;
 import com.google.common.primitives.Ints;
 import com.google.inject.Inject;
 import com.metamx.common.ISE;
-import com.metamx.common.guava.MergeSequence;
 import com.metamx.common.guava.Sequence;
 import com.metamx.common.guava.Sequences;
 import com.metamx.common.guava.nary.BinaryFn;
 import com.metamx.emitter.service.ServiceMetricEvent;
-import io.druid.collections.OrderedMergeSequence;
 import io.druid.granularity.QueryGranularity;
+import io.druid.query.BaseQuery;
 import io.druid.query.BySegmentResultValue;
 import io.druid.query.CacheStrategy;
 import io.druid.query.DruidMetrics;
@@ -110,17 +109,17 @@ public class TopNQueryQueryToolChest extends QueryToolChest<Result<TopNResultVal
   }
 
   @Override
-  public QueryRunner<Result<TopNResultValue>> mergeResults(QueryRunner<Result<TopNResultValue>> runner)
+  public QueryRunner<Result<TopNResultValue>> mergeResults(
+      QueryRunner<Result<TopNResultValue>> runner
+  )
   {
     return new ResultMergeQueryRunner<Result<TopNResultValue>>(runner)
     {
       @Override
       protected Ordering<Result<TopNResultValue>> makeOrdering(Query<Result<TopNResultValue>> query)
       {
-        return Ordering.from(
-            new ResultGranularTimestampComparator<TopNResultValue>(
-                ((TopNQuery) query).getGranularity()
-            )
+        return ResultGranularTimestampComparator.create(
+            ((TopNQuery) query).getGranularity(), query.isDescending()
         );
       }
 
@@ -141,18 +140,6 @@ public class TopNQueryQueryToolChest extends QueryToolChest<Result<TopNResultVal
         );
       }
     };
-  }
-
-  @Override
-  public Sequence<Result<TopNResultValue>> mergeSequences(Sequence<Sequence<Result<TopNResultValue>>> seqOfSequences)
-  {
-    return new OrderedMergeSequence<>(getOrdering(), seqOfSequences);
-  }
-
-  @Override
-  public Sequence<Result<TopNResultValue>> mergeSequencesUnordered(Sequence<Sequence<Result<TopNResultValue>>> seqOfSequences)
-  {
-    return new MergeSequence<>(getOrdering(), seqOfSequences);
   }
 
   @Override
@@ -330,7 +317,7 @@ public class TopNQueryQueryToolChest extends QueryToolChest<Result<TopNResultVal
         return ByteBuffer
             .allocate(
                 1 + dimensionSpecBytes.length + metricSpecBytes.length + 4 +
-                granularityBytes.length                                    + filterBytes.length               + aggregatorBytes.length
+                granularityBytes.length + filterBytes.length + aggregatorBytes.length
             )
             .put(TOPN_QUERY)
             .put(dimensionSpecBytes)
@@ -417,12 +404,6 @@ public class TopNQueryQueryToolChest extends QueryToolChest<Result<TopNResultVal
           }
         };
       }
-
-      @Override
-      public Sequence<Result<TopNResultValue>> mergeSequences(Sequence<Sequence<Result<TopNResultValue>>> seqOfSequences)
-      {
-        return new MergeSequence<>(getOrdering(), seqOfSequences);
-      }
     };
   }
 
@@ -470,7 +451,7 @@ public class TopNQueryQueryToolChest extends QueryToolChest<Result<TopNResultVal
   {
     final ThresholdAdjustingQueryRunner thresholdRunner = new ThresholdAdjustingQueryRunner(
         runner,
-        config.getMinTopNThreshold()
+        config
     );
     return new QueryRunner<Result<TopNResultValue>>()
     {
@@ -527,23 +508,18 @@ public class TopNQueryQueryToolChest extends QueryToolChest<Result<TopNResultVal
     };
   }
 
-  public Ordering<Result<TopNResultValue>> getOrdering()
-  {
-    return Ordering.natural();
-  }
-
-  private static class ThresholdAdjustingQueryRunner implements QueryRunner<Result<TopNResultValue>>
+  static class ThresholdAdjustingQueryRunner implements QueryRunner<Result<TopNResultValue>>
   {
     private final QueryRunner<Result<TopNResultValue>> runner;
-    private final int minTopNThreshold;
+    private final TopNQueryConfig config;
 
     public ThresholdAdjustingQueryRunner(
         QueryRunner<Result<TopNResultValue>> runner,
-        int minTopNThreshold
+        TopNQueryConfig config
     )
     {
       this.runner = runner;
-      this.minTopNThreshold = minTopNThreshold;
+      this.config = config;
     }
 
     @Override
@@ -557,11 +533,12 @@ public class TopNQueryQueryToolChest extends QueryToolChest<Result<TopNResultVal
       }
 
       final TopNQuery query = (TopNQuery) input;
+      final int minTopNThreshold = query.getContextValue("minTopNThreshold", config.getMinTopNThreshold());
       if (query.getThreshold() > minTopNThreshold) {
         return runner.run(query, responseContext);
       }
 
-      final boolean isBySegment = query.getContextBySegment(false);
+      final boolean isBySegment = BaseQuery.getContextBySegment(query, false);
 
       return Sequences.map(
           runner.run(query.withThreshold(minTopNThreshold), responseContext),

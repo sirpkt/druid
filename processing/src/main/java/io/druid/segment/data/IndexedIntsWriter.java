@@ -17,18 +17,19 @@
  * under the License.
  */
 
-package io.druid.segment.column;
+package io.druid.segment.data;
 
-import io.druid.segment.data.EmptyIndexedInts;
-import io.druid.segment.data.IndexedInts;
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.channels.WritableByteChannel;
 
-public class EmptyBitmapIndexSeeker implements BitmapIndexSeeker
+public interface IndexedIntsWriter extends Closeable
 {
+  public void open() throws IOException;
 
-  @Override
-  public IndexedInts seek(String value)
-  {
-    return new EmptyIndexedInts();
-  }
+  public void add(Object obj) throws IOException;
 
+  public long getSerializedSize();
+
+  public void writeToChannel(WritableByteChannel channel) throws IOException;
 }

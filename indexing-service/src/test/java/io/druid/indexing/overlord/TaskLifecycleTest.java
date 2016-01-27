@@ -82,6 +82,7 @@ import io.druid.query.aggregation.DoubleSumAggregatorFactory;
 import io.druid.query.aggregation.LongSumAggregatorFactory;
 import io.druid.segment.IndexIO;
 import io.druid.segment.IndexMerger;
+import io.druid.segment.IndexMergerV9;
 import io.druid.segment.IndexSpec;
 import io.druid.segment.indexing.DataSchema;
 import io.druid.segment.indexing.RealtimeIOConfig;
@@ -132,12 +133,14 @@ public class TaskLifecycleTest
 {
   private static final ObjectMapper MAPPER;
   private static final IndexMerger INDEX_MERGER;
+  private static final IndexMergerV9 INDEX_MERGER_V9;
   private static final IndexIO INDEX_IO;
 
   static {
     TestUtils testUtils = new TestUtils();
     MAPPER = testUtils.getTestObjectMapper();
     INDEX_MERGER = testUtils.getTestIndexMerger();
+    INDEX_MERGER_V9 = testUtils.getTestIndexMergerV9();
     INDEX_IO = testUtils.getTestIndexIO();
   }
 
@@ -510,6 +513,12 @@ public class TaskLifecycleTest
           {
 
           }
+
+          @Override
+          public boolean isAnnounced(DataSegment segment)
+          {
+            return false;
+          }
         }, // segment announcer
         handoffNotifierFactory,
         queryRunnerFactoryConglomerate, // query runner factory conglomerate corporation unionized collective
@@ -532,7 +541,8 @@ public class TaskLifecycleTest
         INDEX_MERGER,
         INDEX_IO,
         MapCache.create(0),
-        FireDepartmentTest.NO_CACHE_CONFIG
+        FireDepartmentTest.NO_CACHE_CONFIG,
+        INDEX_MERGER_V9
     );
     tr = new ThreadPoolTaskRunner(tb, taskConfig, emitter);
     tq = new TaskQueue(tqc, ts, tr, tac, tl, emitter);
@@ -565,7 +575,7 @@ public class TaskLifecycleTest
                 mapper
             ),
             new IndexTask.IndexIOConfig(new MockFirehoseFactory(false)),
-            new IndexTask.IndexTuningConfig(10000, 10, -1, indexSpec)
+            new IndexTask.IndexTuningConfig(10000, 10, -1, indexSpec, null)
         ),
         mapper,
         null
@@ -623,7 +633,7 @@ public class TaskLifecycleTest
                 mapper
             ),
             new IndexTask.IndexIOConfig(new MockExceptionalFirehoseFactory()),
-            new IndexTask.IndexTuningConfig(10000, 10, -1, indexSpec)
+            new IndexTask.IndexTuningConfig(10000, 10, -1, indexSpec, null)
         ),
         mapper,
         null
@@ -969,7 +979,7 @@ public class TaskLifecycleTest
                 mapper
             ),
             new IndexTask.IndexIOConfig(new MockFirehoseFactory(false)),
-            new IndexTask.IndexTuningConfig(10000, 10, -1, indexSpec)
+            new IndexTask.IndexTuningConfig(10000, 10, -1, indexSpec, null)
         ),
         mapper,
         null
@@ -1080,7 +1090,9 @@ public class TaskLifecycleTest
         null,
         null,
         null,
-        null
+        null,
+        null,
+        0, 0
     );
     FireDepartment fireDepartment = new FireDepartment(dataSchema, realtimeIOConfig, realtimeTuningConfig);
     return new RealtimeIndexTask(

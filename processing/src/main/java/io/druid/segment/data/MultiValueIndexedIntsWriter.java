@@ -17,14 +17,29 @@
  * under the License.
  */
 
-package io.druid.segment.column;
+package io.druid.segment.data;
 
-import io.druid.segment.data.IndexedInts;
+import com.google.common.primitives.Ints;
+import com.metamx.common.IAE;
 
-/**
- * Only support access in order
- */
-public interface BitmapIndexSeeker
+import java.io.IOException;
+import java.util.List;
+
+public abstract class MultiValueIndexedIntsWriter implements IndexedIntsWriter
 {
-  public IndexedInts seek(String value);
+  @Override
+  public void add(Object obj) throws IOException
+  {
+    if (obj == null) {
+      addValues(null);
+    } else if (obj instanceof int[]) {
+      addValues(Ints.asList((int[]) obj));
+    } else if (obj instanceof List) {
+      addValues((List<Integer>) obj);
+    } else {
+      throw new IAE("unsupported multi-value type: " + obj.getClass());
+    }
+  }
+
+  protected abstract void addValues(List<Integer> vals) throws IOException;
 }

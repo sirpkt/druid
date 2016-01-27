@@ -17,36 +17,19 @@
  * under the License.
  */
 
-package io.druid.indexing.overlord.autoscaling;
+package io.druid.segment;
 
-import com.metamx.common.logger.Logger;
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.channels.WritableByteChannel;
 
-/**
- */
-public class NoopResourceManagementScheduler extends ResourceManagementScheduler
+public interface GenericColumnSerializer extends Closeable
 {
-  private static final Logger log = new Logger(NoopResourceManagementScheduler.class);
+  public void open() throws IOException;
 
-  public NoopResourceManagementScheduler()
-  {
-    super(null, null, null, null);
-  }
+  public void serialize(Object obj) throws IOException;
 
-  @Override
-  public void start()
-  {
-    log.info("Autoscaling is disabled.");
-  }
+  public long getSerializedSize();
 
-  @Override
-  public void stop()
-  {
-    // do nothing
-  }
-
-  @Override
-  public ScalingStats getStats()
-  {
-    return new ScalingStats(0);
-  }
+  public void writeToChannel(WritableByteChannel channel) throws IOException;
 }
