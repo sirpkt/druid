@@ -133,7 +133,7 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
           return false;
         }
 
-        InputRow rawRow = theParser.parse(ByteBuffer.wrap(message));
+        return theParser.parse(ByteBuffer.wrap(message));
       }
 
       @Override

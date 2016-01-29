@@ -20,58 +20,53 @@ public class KafkaTrumpetEventParser {
     this.checkKeys = checkKeys;
   }
 
-  public Map<String, Object> parse(String input)
+  public Map<String, Object> parse(Map<String, Object> input)
   {
     try {
       Map<String, Object> map = new LinkedHashMap<>();
-      JsonNode root = objectMapper.readTree(input);
 
-      Iterator<String> keysIter = root.fieldNames();
-
-      while (keysIter.hasNext()) {
-        String key = keysIter.next();
-
+      for (Map.Entry<String, Object> entry: input.entrySet()) {
+        final String key = entry.getKey();
         if (checkKeys.containsKey(key)) {
-          JsonNode node = root.path(key);
-
-          if (node.isArray()) {
-            final List<Object> nodeValue = Lists.newArrayListWithExpectedSize(node.size());
-            for (final JsonNode subNode : node) {
-              final Object subNodeValue = convertAndApplyFilter(key, subNode);
-              if (subNodeValue != null) {
-                nodeValue.add(subNodeValue);
+          final Object value = entry.getValue();
+          if (value instanceof List) {
+            List<Object> valueList = (List) value;
+            final List<Object> arrayValues = Lists.newArrayListWithExpectedSize(valueList.size());
+            for (Object arrayEntry: valueList) {
+              final Object filtered = convertAndApplyFilter(key, arrayEntry);
+              if (filtered != null) {
+                arrayValues.add(filtered);
               }
             }
-            if (nodeValue.size() > 0) {
-              map.put(key, nodeValue);
+            if (valueList.size() > 0) {
+              map.put(key, valueList);
             }
           } else {
-            final Object nodeValue = convertAndApplyFilter(key, node);
-            if (nodeValue != null) {
-              map.put(key, nodeValue);
+            final Object filtered = convertAndApplyFilter(key, entry.getValue());
+            if (filtered != null) {
+              map.put(key, filtered);
             }
           }
         }
       }
-      return map;
+      return map.size() > 0 ? map: null;
     }
     catch (Exception e) {
       throw new RuntimeException(String.format("Unable to parse row [%s]", input), e);
     }
   }
 
-  private Object convertAndApplyFilter(String key, JsonNode node)
+  private Object convertAndApplyFilter(String key, Object value)
   {
-    final Object nodeValue = JSONParser.valueFunction.apply(node);
-    if (nodeValue == null) {
+    if (value == null) {
       return null;
     }
     Predicate predicate = checkKeys.get(key);
     if (predicate == null) {
-      return nodeValue;
+      return value;
     }
 
-    return predicate.apply(nodeValue) ? nodeValue : null;
+    return predicate.apply(value) ? value : null;
   }
 
 }
