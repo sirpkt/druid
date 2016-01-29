@@ -2,9 +2,10 @@ package io.druid.firehose.hdfs.realtime;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
-import com.metamx.common.logger.Logger;
 import io.druid.data.input.ByteBufferInputRowParser;
 import io.druid.data.input.Firehose;
 import io.druid.data.input.FirehoseFactory;
@@ -14,35 +15,67 @@ import kafka.consumer.ConsumerConfig;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.ConsumerConnector;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 /**
  */
 public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBufferInputRowParser>
 {
-  private static final Logger log = new Logger(KafkaEightFirehoseFactory.class);
+  private static final Logger log = Logger.getLogger(KafkaHdfsRealtimeFirehoseFactory.class);
 
   @JsonProperty
   private final Properties consumerProps;
 
   @JsonProperty
-  private final String feed;
+  private final Map<String, Object> hdfsPathSpec;
+
+  private final String[] hdfsPaths;
+
+  private final KafkaTrumpetEventParser eventParser;
+  private final Map<String, Predicate> eventFilterSpec;
+
+  @JsonProperty
+  private final String kafkaEventFeed;
+
+  @JsonProperty
+  private final String[] checkingEvents;
 
   @JsonCreator
-  public KafkaEightFirehoseFactory(
+  public KafkaHdfsRealtimeFirehoseFactory(
       @JsonProperty("consumerProps") Properties consumerProps,
-      @JsonProperty("feed") String feed
-
+      @JsonProperty("hdfsInputSpec") Map<String, Object> hdfsPathSpec,
+      @JsonProperty("kafkaEventFeed") String kafkaEventFeed,
+      @JsonProperty("checkingEvents") String[] checkingEvents
   )
   {
     this.consumerProps = consumerProps;
-    this.feed = feed;
+    this.hdfsPathSpec = hdfsPathSpec;
+    this.kafkaEventFeed = kafkaEventFeed;
+    this.checkingEvents = checkingEvents;
+
+    this.hdfsPaths = new String[hdfsPathSpec.size()];
+    int hdfsPathIdx = 0;
+
+    for(Map.Entry<String, Object> entry: hdfsPathSpec.entrySet()) {
+      Preconditions.checkArgument("static".equals(entry.getKey()),
+          "[%s]=> only \"static\" is supported", entry.getKey());
+      this.hdfsPaths[hdfsPathIdx++] = (String)entry.getValue();
+    }
+    this.eventFilterSpec = new HashMap<>();
+    for (String checkingEvent: checkingEvents) {
+      this.eventFilterSpec.put(checkingEvent, null);
+    }
+    // Basically, "path" event filter is included for the given HDFS input paths
+    this.eventFilterSpec.put("path", new HdfsDirPathMatchPredicate(this.hdfsPaths));
+    this.eventParser = new KafkaTrumpetEventParser(this.eventFilterSpec);
+
+    // TODO - fix to make kafka consumer group id unique
+    //        currently collision may occur for concurrent creation of factory
+    this.consumerProps.setProperty("group.id", this.consumerProps.getProperty("group.id") + System.currentTimeMillis());
   }
 
   @Override
@@ -50,7 +83,7 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
   {
     Set<String> newDimExclus = Sets.union(
         firehoseParser.getParseSpec().getDimensionsSpec().getDimensionExclusions(),
-        Sets.newHashSet("feed")
+        Sets.newHashSet("kafkaEventFeed")
     );
     final ByteBufferInputRowParser theParser = firehoseParser.withParseSpec(
         firehoseParser.getParseSpec()
@@ -67,12 +100,12 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
 
     final Map<String, List<KafkaStream<byte[], byte[]>>> streams = connector.createMessageStreams(
         ImmutableMap.of(
-            feed,
+            kafkaEventFeed,
             1
         )
     );
 
-    final List<KafkaStream<byte[], byte[]>> streamList = streams.get(feed);
+    final List<KafkaStream<byte[], byte[]>> streamList = streams.get(kafkaEventFeed);
     if (streamList == null || streamList.size() != 1) {
       return null;
     }
@@ -82,10 +115,25 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
 
     return new Firehose()
     {
+      InputRow next = null;
+
       @Override
       public boolean hasMore()
       {
-        return iter.hasNext();
+        while (iter.hasNext()) {
+
+        }
+      }
+
+      private boolean getAndCheckNextRow()
+      {
+        final byte[] message = iter.next().message();
+
+        if (message == null) {
+          return false;
+        }
+
+        InputRow rawRow = theParser.parse(ByteBuffer.wrap(message));
       }
 
       @Override
@@ -108,13 +156,6 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
           @Override
           public void run()
           {
-               /*
-                 This is actually not going to do exactly what we want, cause it will be called asynchronously
-                 after the persist is complete.  So, it's going to commit that it's processed more than was actually
-                 persisted.  This is unfortunate, but good enough for now.  Should revisit along with an upgrade
-                 of our Kafka version.
-               */
-
             log.info("committing offsets");
             connector.commitOffsets();
           }
