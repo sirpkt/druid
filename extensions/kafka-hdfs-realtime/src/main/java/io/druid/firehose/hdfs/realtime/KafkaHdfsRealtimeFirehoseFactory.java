@@ -36,26 +36,26 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
   private final String[] hdfsPaths;
 
   private final KafkaTrumpetEventParser eventParser;
-  private final Map<String, Predicate> eventFilterSpec;
+  private final Map<Map<String, Predicate>, List<String>> eventFilterSpec;
 
   @JsonProperty
   private final String kafkaEventFeed;
 
   @JsonProperty
-  private final String[] checkingEvents;
+  private final String[] outputFields;
 
   @JsonCreator
   public KafkaHdfsRealtimeFirehoseFactory(
       @JsonProperty("consumerProps") Properties consumerProps,
       @JsonProperty("hdfsInputSpec") Map<String, Object> hdfsPathSpec,
       @JsonProperty("kafkaEventFeed") String kafkaEventFeed,
-      @JsonProperty("checkingEvents") String[] checkingEvents
+      @JsonProperty("outputFields") String[] checkingEvents
   )
   {
     this.consumerProps = consumerProps;
     this.hdfsPathSpec = hdfsPathSpec;
     this.kafkaEventFeed = kafkaEventFeed;
-    this.checkingEvents = checkingEvents;
+    this.outputFields = checkingEvents;
 
     this.hdfsPaths = new String[hdfsPathSpec.size()];
     int hdfsPathIdx = 0;
@@ -65,12 +65,21 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
           "[%s]=> only \"static\" is supported", entry.getKey());
       this.hdfsPaths[hdfsPathIdx++] = (String)entry.getValue();
     }
+    List<String> outputFields = Arrays.asList(checkingEvents);
     this.eventFilterSpec = new HashMap<>();
-    for (String checkingEvent: checkingEvents) {
-      this.eventFilterSpec.put(checkingEvent, null);
-    }
+
     // Basically, "path" event filter is included for the given HDFS input paths
-    this.eventFilterSpec.put("path", new HdfsDirPathMatchPredicate(this.hdfsPaths));
+    Map<String, Predicate> checkPath = new HashMap<>();
+    checkPath.put("eventType", new KafkaTrumpetEventTypePredicate(new String[]{"CREATE", "APPEND", "CLOSE"}));
+    checkPath.put("path", new HdfsDirPathMatchPredicate(this.hdfsPaths));
+    this.eventFilterSpec.put(checkPath, outputFields);
+
+    // for "RENAME" event, "dstPath" should be checked
+    Map<String, Predicate> checkRenamePath = new HashMap<>();
+    checkRenamePath.put("eventType", new KafkaTrumpetEventTypePredicate(new String[] {"RENAME"}));
+    checkRenamePath.put("dstPath", new HdfsDirPathMatchPredicate(this.hdfsPaths));
+    this.eventFilterSpec.put(checkRenamePath, outputFields);
+
     this.eventParser = new KafkaTrumpetEventParser(this.eventFilterSpec);
 
     // TODO - fix to make kafka consumer group id unique
@@ -81,21 +90,6 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
   @Override
   public Firehose connect(final ByteBufferInputRowParser firehoseParser) throws IOException
   {
-    Set<String> newDimExclus = Sets.union(
-        firehoseParser.getParseSpec().getDimensionsSpec().getDimensionExclusions(),
-        Sets.newHashSet("kafkaEventFeed")
-    );
-    final ByteBufferInputRowParser theParser = firehoseParser.withParseSpec(
-        firehoseParser.getParseSpec()
-            .withDimensionsSpec(
-                firehoseParser.getParseSpec()
-                    .getDimensionsSpec()
-                    .withDimensionExclusions(
-                        newDimExclus
-                    )
-            )
-    );
-
     final ConsumerConnector connector = Consumer.createJavaConsumerConnector(new ConsumerConfig(consumerProps));
 
     final Map<String, List<KafkaStream<byte[], byte[]>>> streams = connector.createMessageStreams(
@@ -125,15 +119,21 @@ public class KafkaHdfsRealtimeFirehoseFactory implements FirehoseFactory<ByteBuf
         }
       }
 
-      private boolean getAndCheckNextRow()
+      private boolean getNextHdfsStream()
       {
-        final byte[] message = iter.next().message();
+        while (iter.hasNext()) {
+          final byte[] message = iter.next().message();
 
-        if (message == null) {
-          return false;
+          if (message == null) {
+            return false;
+          }
+
+          Map<String, Object> map = eventParser.parse(ByteBuffer.wrap(message));
+          if (map != null)
+          {
+
+          }
         }
-
-        return theParser.parse(ByteBuffer.wrap(message));
       }
 
       @Override
