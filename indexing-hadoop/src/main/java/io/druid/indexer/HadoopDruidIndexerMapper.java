@@ -19,6 +19,7 @@
 
 package io.druid.indexer;
 
+import com.metamx.common.Pair;
 import com.metamx.common.RE;
 import com.metamx.common.logger.Logger;
 import io.druid.data.input.InputRow;
@@ -30,6 +31,9 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.joda.time.DateTime;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public abstract class HadoopDruidIndexerMapper<KEYOUT, VALUEOUT> extends Mapper<Object, Object, KEYOUT, VALUEOUT>
 {
@@ -65,8 +69,22 @@ public abstract class HadoopDruidIndexerMapper<KEYOUT, VALUEOUT> extends Mapper<
   {
     try {
       final InputRow inputRow;
+      final List<InputRow> inputRows = new ArrayList<>();
       try {
         inputRow = parseInputRow(value, parser);
+        if (parser instanceof HadoopyStringSummaryInputRowParser) {
+          InputRow convertInputRow;
+          HadoopCustomStringDecoder hadoopCustomStringDecoder = (HadoopCustomStringDecoder) ((HadoopyStringSummaryInputRowParser) parser)
+              .getDecoder();
+          Map<String, String> parseColumn = hadoopCustomStringDecoder.getParseColumn();
+
+          String[] keys = ((String) inputRow.getRaw(parseColumn.get("columnField"))).split(parseColumn.get("tokenizer"));
+          String[] values = ((String) inputRow.getRaw(parseColumn.get("valueField"))).split(parseColumn.get("tokenizer"));
+          for (int i = 0; i < keys.length; i++) {
+            convertInputRow = parseInputRowWithPos(new Pair<>(keys[i],values[i]), value, parser);
+            inputRows.add(convertInputRow);
+          }
+        }
       }
       catch (Exception e) {
         if (config.isIgnoreInvalidRows()) {
@@ -81,7 +99,15 @@ public abstract class HadoopDruidIndexerMapper<KEYOUT, VALUEOUT> extends Mapper<
       if (!granularitySpec.bucketIntervals().isPresent()
           || granularitySpec.bucketInterval(new DateTime(inputRow.getTimestampFromEpoch()))
                             .isPresent()) {
-        innerMap(inputRow, value, context);
+
+        if (parser instanceof HadoopyStringSummaryInputRowParser) {
+          for (InputRow replaceInputRow : inputRows) {
+            innerMap(replaceInputRow, value, context);
+          }
+        } else {
+          innerMap(inputRow, value, context);
+        }
+
       }
     }
     catch (RuntimeException e) {
@@ -101,6 +127,11 @@ public abstract class HadoopDruidIndexerMapper<KEYOUT, VALUEOUT> extends Mapper<
     } else {
       return parser.parse(value);
     }
+  }
+
+  public final static InputRow parseInputRowWithPos(Pair pair, Object value, InputRowParser parser)
+  {
+    return parser.parse(new Pair<>(pair,value));
   }
 
   abstract protected void innerMap(InputRow inputRow, Object value, Context context)
