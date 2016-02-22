@@ -39,7 +39,11 @@ public class IndexingHadoopModule implements DruidModule
         new SimpleModule("IndexingHadoopModule")
             .registerSubtypes(
                 new NamedType(HadoopyStringInputRowParser.class, "hadoopyString")
-            )
+            ).registerSubtypes(
+            new NamedType(HadoopyStringCustomInputRowParser.class, "hadoopyStringCustom")
+        ).registerSubtypes(
+            new NamedType(HadoopyStringSummaryInputRowParser.class, "hadoopyStringSummary")
+        )
     );
   }
 
