@@ -19,10 +19,15 @@
 
 package io.druid.indexer;
 
+import com.google.api.client.util.Lists;
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.metamx.common.Pair;
 import com.metamx.common.RE;
 import com.metamx.common.logger.Logger;
 import io.druid.data.input.InputRow;
+import io.druid.data.input.MapBasedInputRow;
 import io.druid.data.input.impl.InputRowParser;
 import io.druid.data.input.impl.StringInputRowParser;
 import io.druid.segment.indexing.granularity.GranularitySpec;
@@ -31,7 +36,6 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.joda.time.DateTime;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -43,6 +47,8 @@ public abstract class HadoopDruidIndexerMapper<KEYOUT, VALUEOUT> extends Mapper<
   private InputRowParser parser;
   protected GranularitySpec granularitySpec;
 
+  private Function<InputRow, Iterable<InputRow>> generator;
+
   @Override
   protected void setup(Context context)
       throws IOException, InterruptedException
@@ -50,6 +56,69 @@ public abstract class HadoopDruidIndexerMapper<KEYOUT, VALUEOUT> extends Mapper<
     config = HadoopDruidIndexerConfig.fromConfiguration(context.getConfiguration());
     parser = config.getParser();
     granularitySpec = config.getGranularitySpec();
+    if (parser instanceof HadoopyStringSummaryInputRowParser) {
+      generator = new Function<InputRow, Iterable<InputRow>>()
+      {
+        final HadoopCustomStringDecoder hadoopCustomStringDecoder =
+            (HadoopCustomStringDecoder) ((HadoopyStringSummaryInputRowParser) parser).getDecoder();
+        final Map<String, String> parseColumn = hadoopCustomStringDecoder.getParseColumn();
+        final String columnField = parseColumn.get("columnField");
+        final String valueField = parseColumn.get("valueField");
+        final String tokenizer = parseColumn.get("tokenizer");
+
+        @Override
+        public Iterable<InputRow> apply(final InputRow input)
+        {
+          final Map<String, Object> mapRow = ((MapBasedInputRow)input).getEvent();
+
+          final String[] paramNames = ((String)input.getRaw(columnField)).split(tokenizer);
+          final String[] paramValues = ((String)input.getRaw(valueField)).split(tokenizer);
+
+          List<Pair<String, String>> validPairs = Lists.newArrayList();
+          for (int i = 0; i < paramNames.length; i++) {
+            if (isNumeric(paramValues[i])) {
+              validPairs.add(Pair.of(paramNames[i], paramValues[i]));
+            }
+          }
+
+          return Iterables.transform(
+              validPairs, new Function<Pair<String,String>, InputRow>()
+              {
+                @Override
+                public InputRow apply(Pair<String, String> pair)
+                {
+                  mapRow.put(columnField, pair.lhs);
+                  mapRow.put(valueField, pair.rhs);
+                  return input;
+                }
+              }
+          );
+        }
+      };
+    } else {
+      generator = new Function<InputRow, Iterable<InputRow>>()
+      {
+        @Override
+        public Iterable<InputRow> apply(InputRow input)
+        {
+          return ImmutableList.of(input);
+        }
+      };
+    }
+  }
+
+  private boolean isNumeric(String str)
+  {
+    try {
+      Float.parseFloat(str);
+      if ("NaN".equals(str)) {
+        throw new NumberFormatException();
+      }
+    }
+    catch (NumberFormatException e) {
+      return false;
+    }
+    return true;
   }
 
   public HadoopDruidIndexerConfig getConfig()
@@ -68,50 +137,35 @@ public abstract class HadoopDruidIndexerMapper<KEYOUT, VALUEOUT> extends Mapper<
   ) throws IOException, InterruptedException
   {
     try {
-      final InputRow inputRow;
-      final List<InputRow> inputRows = new ArrayList<>();
-      try {
-        inputRow = parseInputRow(value, parser);
-        if (parser instanceof HadoopyStringSummaryInputRowParser) {
-          InputRow convertInputRow;
-          HadoopCustomStringDecoder hadoopCustomStringDecoder = (HadoopCustomStringDecoder) ((HadoopyStringSummaryInputRowParser) parser)
-              .getDecoder();
-          Map<String, String> parseColumn = hadoopCustomStringDecoder.getParseColumn();
-
-          String[] keys = ((String) inputRow.getRaw(parseColumn.get("columnField"))).split(parseColumn.get("tokenizer"));
-          String[] values = ((String) inputRow.getRaw(parseColumn.get("valueField"))).split(parseColumn.get("tokenizer"));
-          for (int i = 0; i < keys.length; i++) {
-            convertInputRow = parseInputRowWithPos(new Pair<>(keys[i],values[i]), value, parser);
-            inputRows.add(convertInputRow);
-          }
-        }
+      final InputRow inputRow = parseRow(value, context);
+      if (inputRow == null) {
+        return;
       }
-      catch (Exception e) {
-        if (config.isIgnoreInvalidRows()) {
-          log.debug(e, "Ignoring invalid row [%s] due to parsing error", value.toString());
-          context.getCounter(HadoopDruidIndexerConfig.IndexJobCounters.INVALID_ROW_COUNTER).increment(1);
-          return; // we're ignoring this invalid row
-        } else {
-          throw e;
-        }
-      }
-
       if (!granularitySpec.bucketIntervals().isPresent()
           || granularitySpec.bucketInterval(new DateTime(inputRow.getTimestampFromEpoch()))
                             .isPresent()) {
-
-        if (parser instanceof HadoopyStringSummaryInputRowParser) {
-          for (InputRow replaceInputRow : inputRows) {
-            innerMap(replaceInputRow, value, context);
-          }
-        } else {
-          innerMap(inputRow, value, context);
+        for (InputRow row : generator.apply(inputRow)) {
+          innerMap(row, value, context);
         }
-
       }
     }
     catch (RuntimeException e) {
       throw new RE(e, "Failure on row[%s]", value);
+    }
+  }
+
+  private InputRow parseRow(Object value, Context context) {
+    try {
+      return parseInputRow(value, parser);
+    }
+    catch (Exception e) {
+      if (config.isIgnoreInvalidRows()) {
+        log.debug(e, "Ignoring invalid row [%s] due to parsing error", value.toString());
+        context.getCounter(HadoopDruidIndexerConfig.IndexJobCounters.INVALID_ROW_COUNTER).increment(1);
+        return null; // we're ignoring this invalid row
+      } else {
+        throw e;
+      }
     }
   }
 
