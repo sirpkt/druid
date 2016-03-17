@@ -195,7 +195,10 @@ public class RealtimePlumberSchoolTest
         null,
         null,
         buildV9Directly,
-        0, 0
+        0,
+        0,
+        false,
+        null
     );
 
     realtimePlumberSchool = new RealtimePlumberSchool(
@@ -654,7 +657,7 @@ public class RealtimePlumberSchoolTest
       @Override
       public Object getRaw(String dimension)
       {
-        return null;
+        return dimVals;
       }
 
       @Override

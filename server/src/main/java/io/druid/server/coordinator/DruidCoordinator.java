@@ -20,13 +20,13 @@
 package io.druid.server.coordinator;
 
 import com.google.common.base.Function;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.metamx.common.IAE;
@@ -64,6 +64,7 @@ import io.druid.server.coordinator.helper.DruidCoordinatorHelper;
 import io.druid.server.coordinator.helper.DruidCoordinatorLogger;
 import io.druid.server.coordinator.helper.DruidCoordinatorRuleRunner;
 import io.druid.server.coordinator.helper.DruidCoordinatorSegmentInfoLoader;
+import io.druid.server.coordinator.helper.DruidCoordinatorSegmentKiller;
 import io.druid.server.coordinator.helper.DruidCoordinatorSegmentMerger;
 import io.druid.server.coordinator.rules.LoadRule;
 import io.druid.server.coordinator.rules.Rule;
@@ -80,6 +81,7 @@ import org.joda.time.Interval;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -94,6 +96,20 @@ import java.util.concurrent.atomic.AtomicReference;
 public class DruidCoordinator
 {
   public static final String COORDINATOR_OWNER_NODE = "_COORDINATOR";
+
+  public static Comparator<DataSegment> SEGMENT_COMPARATOR = Ordering.from(Comparators.intervalsByEndThenStart())
+                                                                     .onResultOf(
+                                                                         new Function<DataSegment, Interval>()
+                                                                         {
+                                                                           @Override
+                                                                           public Interval apply(DataSegment segment)
+                                                                           {
+                                                                             return segment.getInterval();
+                                                                           }
+                                                                         })
+                                                                     .compound(Ordering.<DataSegment>natural())
+                                                                     .reverse();
+
   private static final EmittingLogger log = new EmittingLogger(DruidCoordinator.class);
   private final Object lock = new Object();
   private final DruidCoordinatorConfig config;
@@ -249,7 +265,8 @@ public class DruidCoordinator
     return retVal;
   }
 
-  CountingMap<String> getLoadPendingDatasources() {
+  CountingMap<String> getLoadPendingDatasources()
+  {
     final CountingMap<String> retVal = new CountingMap<>();
     for (LoadQueuePeon peon : loadManagementPeons.values()) {
       for (DataSegment segment : peon.getSegmentsToLoad()) {
@@ -386,7 +403,7 @@ public class DruidCoordinator
             public void execute()
             {
               try {
-                if (curator.checkExists().forPath(toServedSegPath) != null &&
+                if (curator.checkExists().forPath(toServedSegPath) != null    &&
                     curator.checkExists().forPath(toLoadQueueSegPath) == null &&
                     !dropPeon.getSegmentsToDrop().contains(segment)) {
                   dropPeon.dropSegment(segment, callback);
@@ -411,7 +428,7 @@ public class DruidCoordinator
 
   public Set<DataSegment> getOrderedAvailableDataSegments()
   {
-    Set<DataSegment> availableSegments = Sets.newTreeSet(Comparators.inverse(DataSegment.bucketMonthComparator()));
+    Set<DataSegment> availableSegments = Sets.newTreeSet(SEGMENT_COMPARATOR);
 
     Iterable<DataSegment> dataSegments = getAvailableDataSegments();
 
@@ -672,106 +689,6 @@ public class DruidCoordinator
     }
 
     return ImmutableList.copyOf(helpers);
-  }
-
-  static class DruidCoordinatorSegmentKiller implements DruidCoordinatorHelper
-  {
-    
-    private final long period;
-    private final long retainDuration;
-    private final int maxSegmentsToKill;
-    private long lastKillTime = 0;
-
-
-    private final MetadataSegmentManager segmentManager;
-    private final IndexingServiceClient indexingServiceClient;
-
-    DruidCoordinatorSegmentKiller(
-        MetadataSegmentManager segmentManager,
-        IndexingServiceClient indexingServiceClient,
-        Duration retainDuration,
-        Duration period,
-        int maxSegmentsToKill
-    )
-    {
-      this.period = period.getMillis();
-      Preconditions.checkArgument(this.period > 0, "coordinator kill period must be > 0");
-
-      this.retainDuration = retainDuration.getMillis();
-      Preconditions.checkArgument(this.retainDuration >= 0, "coordinator kill retainDuration must be >= 0");
-
-      this.maxSegmentsToKill = maxSegmentsToKill;
-      Preconditions.checkArgument(this.maxSegmentsToKill > 0, "coordinator kill maxSegments must be > 0");
-
-      log.info(
-          "Kill Task scheduling enabled with period [%s], retainDuration [%s], maxSegmentsToKill [%s]",
-          this.period,
-          this.retainDuration,
-          this.maxSegmentsToKill
-      );
-
-      this.segmentManager = segmentManager;
-      this.indexingServiceClient = indexingServiceClient;
-    }
-
-    @Override
-    public DruidCoordinatorRuntimeParams run(DruidCoordinatorRuntimeParams params)
-    {
-      Set<String> whitelist = params.getCoordinatorDynamicConfig().getKillDataSourceWhitelist();
-
-      if (whitelist != null && whitelist.size() > 0 && (lastKillTime + period) < System.currentTimeMillis()) {
-        lastKillTime = System.currentTimeMillis();
-
-        for (String dataSource : whitelist) {
-          final Interval intervalToKill = findIntervalForKillTask(dataSource, maxSegmentsToKill);
-          if (intervalToKill != null) {
-            try {
-              indexingServiceClient.killSegments(dataSource, intervalToKill);
-            }
-            catch (Exception ex) {
-              log.error(ex, "Failed to submit kill task for dataSource [%s]", dataSource);
-              if (Thread.currentThread().isInterrupted()) {
-                log.warn("skipping kill task scheduling because thread is interrupted.");
-                break;
-              }
-            }
-          }
-        }
-      }
-      return params;
-    }
-
-    private Interval findIntervalForKillTask(String dataSource, int limit)
-    {
-      List<Interval> unusedSegmentIntervals = segmentManager.getUnusedSegmentIntervals(
-          dataSource,
-          new Interval(
-              0,
-              System.currentTimeMillis()
-              - retainDuration
-          ),
-          limit
-      );
-
-      if (unusedSegmentIntervals != null && unusedSegmentIntervals.size() > 0) {
-        long start = Long.MIN_VALUE;
-        long end = Long.MAX_VALUE;
-
-        for (Interval interval : unusedSegmentIntervals) {
-          if (start < interval.getStartMillis()) {
-            start = interval.getStartMillis();
-          }
-
-          if (end > interval.getEndMillis()) {
-            end = interval.getEndMillis();
-          }
-        }
-
-        return new Interval(start, end);
-      } else {
-        return null;
-      }
-    }
   }
 
   public static class DruidCoordinatorVersionConverter implements DruidCoordinatorHelper

@@ -8,8 +8,8 @@ A Druid ingestion spec consists of 3 components:
 
 ```json
 {
-  "dataSchema" : {...}
-  "ioConfig" : {...}
+  "dataSchema" : {...},
+  "ioConfig" : {...},
   "tuningConfig" : {...}
 }
 ```
@@ -81,27 +81,28 @@ If `type` is not included, the parser defaults to `string`.
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
-| type | String | This should say `string`. | no |
-| parseSpec | JSON Object | Specifies the format of the data. | yes |
+| type | String | This should say `string` in general, or `hadoopyString` when used in a Hadoop indexing job. | no |
+| parseSpec | JSON Object | Specifies the format, timestamp, and dimensions of the data. | yes |
 
 ### Protobuf Parser
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
 | type | String | This should say `protobuf`. | no |
-| parseSpec | JSON Object | Specifies the format of the data. | yes |
+| parseSpec | JSON Object | Specifies the timestamp and dimensions of the data. Should be a timeAndDims parseSpec. | yes |
 
 ### Avro Stream Parser
 
-This is for realtime ingestion.
+This is for realtime ingestion. Make sure to include `druid-avro-extensions` as an extension.
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
 | type | String | This should say `avro_stream`. | no |
 | avroBytesDecoder | JSON Object | Specifies how to decode bytes to Avro record. | yes |
-| parseSpec | JSON Object | Specifies the format of the data. | yes |
+| parseSpec | JSON Object | Specifies the timestamp and dimensions of the data. Should be a timeAndDims parseSpec. | yes |
 
 For example, using Avro stream parser with schema repo Avro bytes decoder:
+
 ```json
 "parser" : {
   "type" : "avro_stream",
@@ -116,10 +117,10 @@ For example, using Avro stream parser with schema repo Avro bytes decoder:
       "url" : "${YOUR_SCHEMA_REPO_END_POINT}",
     }
   },
-  "parsSpec" : {
-    "format" : "timeAndDims",
-    "timestampSpec" : {},
-    "dimensionsSpec" : {}
+  "parseSpec" : {
+    "type": "timeAndDims",
+    "timestampSpec": <standard timestampSpec>,
+    "dimensionsSpec": <standard dimensionsSpec>
   }
 }
 ```
@@ -155,28 +156,28 @@ This Avro bytes decoder first extract `subject` and `id` from input message byte
 
 ### Avro Hadoop Parser
 
-This is for batch ingestion using the HadoopDruidIndexer. The `inputFormat` of `inputSpec` in `ioConfig` must be set to `"io.druid.data.input.avro.AvroValueInputFormat"`. You may want to set Avro reader's schema in `jobProperties` in `tuningConfig`, eg: `"avro.schema.path.input.value": "/path/to/your/schema.avsc"` or `"avro.schema.input.value": "your_schema_JSON_object"`, if reader's schema is not set, the schema in Avro object container file will be used, see [Avro specification](http://avro.apache.org/docs/1.7.7/spec.html#Schema+Resolution).
+This is for batch ingestion using the HadoopDruidIndexer. The `inputFormat` of `inputSpec` in `ioConfig` must be set to `"io.druid.data.input.avro.AvroValueInputFormat"`. You may want to set Avro reader's schema in `jobProperties` in `tuningConfig`, eg: `"avro.schema.path.input.value": "/path/to/your/schema.avsc"` or `"avro.schema.input.value": "your_schema_JSON_object"`, if reader's schema is not set, the schema in Avro object container file will be used, see [Avro specification](http://avro.apache.org/docs/1.7.7/spec.html#Schema+Resolution). Make sure to include "io.druid.extensions:druid-avro-extensions" as an extension.
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
 | type | String | This should say `avro_hadoop`. | no |
-| parseSpec | JSON Object | Specifies the format of the data. | yes |
+| parseSpec | JSON Object | Specifies the timestamp and dimensions of the data. Should be a timeAndDims parseSpec. | yes |
 | fromPigAvroStorage | Boolean | Specifies whether the data file is stored using AvroStorage. | no(default == false) |
 
 For example, using Avro Hadoop parser with custom reader's schema file:
+
 ```json
 {
-  "type" : "index_hadoop",
-  "hadoopDependencyCoordinates" : ["io.druid.extensions:druid-avro-extensions"],
+  "type" : "index_hadoop",  
   "spec" : {
     "dataSchema" : {
       "dataSource" : "",
       "parser" : {
         "type" : "avro_hadoop",
-        "parsSpec" : {
-          "format" : "timeAndDims",
-          "timestampSpec" : {},
-          "dimensionsSpec" : {}
+        "parseSpec" : {
+          "type": "timeAndDims",
+          "timestampSpec": <standard timestampSpec>,
+          "dimensionsSpec": <standard dimensionsSpec>
         }
       }
     },
@@ -199,9 +200,16 @@ For example, using Avro Hadoop parser with custom reader's schema file:
 
 ### ParseSpec
 
+ParseSpecs serve two purposes:
+
+- The String Parser use them to determine the format (i.e. JSON, CSV, TSV) of incoming rows.
+- All Parsers use them to determine the timestamp and dimensions of incoming rows.
+
 If `format` is not included, the parseSpec defaults to `tsv`.
 
 #### JSON ParseSpec
+
+Use this with the String Parser to load JSON.
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
@@ -209,8 +217,7 @@ If `format` is not included, the parseSpec defaults to `tsv`.
 | timestampSpec | JSON Object | Specifies the column and format of the timestamp. | yes |
 | dimensionsSpec | JSON Object | Specifies the dimensions of the data. | yes |
 | flattenSpec | JSON Object | Specifies flattening configuration for nested JSON data. See [Flattening JSON](./flatten-json.html) for more info. | no |
-  
-  
+
 #### JSON Lowercase ParseSpec
 
 This is a special variation of the JSON ParseSpec that lower cases all the column names in the incoming JSON data. This parseSpec is required if you are updating to Druid 0.7.x from Druid 0.6.x, are directly ingesting JSON with mixed case column names, do not have any ETL in place to lower case those column names, and would like to make queries that include the data you created using 0.6.x and 0.7.x.
@@ -221,8 +228,9 @@ This is a special variation of the JSON ParseSpec that lower cases all the colum
 | timestampSpec | JSON Object | Specifies the column and format of the timestamp. | yes |
 | dimensionsSpec | JSON Object | Specifies the dimensions of the data. | yes |
 
-
 #### CSV ParseSpec
+
+Use this with the String Parser to load CSV. Strings are parsed using the net.sf.opencsv library.
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
@@ -232,7 +240,10 @@ This is a special variation of the JSON ParseSpec that lower cases all the colum
 | listDelimiter | String | A custom delimiter for multi-value dimensions. | no (default == ctrl+A) |
 | columns | JSON array | Specifies the columns of the data. | yes |
 
-#### TSV ParseSpec
+#### TSV / Delimited ParseSpec
+
+Use this with the String Parser to load any delimited text that does not require special escaping. By default,
+the delimiter is a tab, so this will load TSV.
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
@@ -243,7 +254,18 @@ This is a special variation of the JSON ParseSpec that lower cases all the colum
 | listDelimiter | String | A custom delimiter for multi-value dimensions. | no (default == ctrl+A) |
 | columns | JSON String array | Specifies the columns of the data. | yes |
 
-### Timestamp Spec
+#### TimeAndDims ParseSpec
+
+Use this with non-String Parsers to provide them with timestamp and dimensions information. Non-String Parsers
+handle all formatting decisions on their own, without using the ParseSpec.
+
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| format | String | This should say `timeAndDims`. | yes |
+| timestampSpec | JSON Object | Specifies the column and format of the timestamp. | yes |
+| dimensionsSpec | JSON Object | Specifies the dimensions of the data. | yes |
+
+### TimestampSpec
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
@@ -285,12 +307,14 @@ This spec is used to generate segments with arbitrary intervals (it tries to cre
 
 # IO Config
 
-Real-time Ingestion: See [Real-time ingestion](../ingestion/realtime-ingestion.html).
+Stream Push Ingestion: Stream push ingestion with Tranquility does not require an IO Config.
+Stream Pull Ingestion: See [Stream pull ingestion](../ingestion/stream-pull.html).
 Batch Ingestion: See [Batch ingestion](../ingestion/batch-ingestion.html)
 
-# Ingestion Spec
+# Tuning Config
 
-Real-time Ingestion: See [Real-time ingestion](../ingestion/realtime-ingestion.html).
+Stream Push Ingestion: See [Stream push ingestion](../ingestion/stream-push.html).
+Stream Pull Ingestion: See [Stream pull ingestion](../ingestion/stream-pull.html).
 Batch Ingestion: See [Batch ingestion](../ingestion/batch-ingestion.html)
 
 # Evaluating Timestamp, Dimensions and Metrics
