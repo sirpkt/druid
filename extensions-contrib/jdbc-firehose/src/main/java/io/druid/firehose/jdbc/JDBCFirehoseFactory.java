@@ -95,7 +95,8 @@ public class JDBCFirehoseFactory implements FirehoseFactory<MapInputRowParser>
         new HandleCallback<Iterator<InputRow>>()
         {
           @Override
-          public Iterator<InputRow>> withHandle(Handle handle) throws Exception{
+          public Iterator<InputRow> withHandle(Handle handle) throws Exception
+        {
             final String query = makeQuery(requiredColumns);
 
             return handle
@@ -145,7 +146,6 @@ public class JDBCFirehoseFactory implements FirehoseFactory<MapInputRowParser>
       @Override
       public void close() throws IOException
       {
-        dbi.close();
       }
     };
   }
