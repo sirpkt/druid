@@ -21,10 +21,9 @@ package io.druid.firehose.jdbc;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.api.client.util.Lists;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.metamx.common.collect.Utils;
+import com.google.common.collect.ImmutableMap;
 import com.metamx.common.parsers.ParseException;
 import com.metamx.emitter.EmittingLogger;
 import io.druid.data.input.Firehose;
@@ -34,27 +33,30 @@ import io.druid.data.input.impl.MapInputRowParser;
 import io.druid.data.input.impl.ParseSpec;
 import io.druid.metadata.MetadataStorageConnectorConfig;
 import org.apache.commons.lang.StringUtils;
+import org.codehaus.plexus.util.CollectionUtils;
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.Handle;
+import org.skife.jdbi.v2.ResultIterator;
 import org.skife.jdbi.v2.StatementContext;
-import org.skife.jdbi.v2.tweak.HandleCallback;
 import org.skife.jdbi.v2.tweak.ResultSetMapper;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 public class JDBCFirehoseFactory implements FirehoseFactory<MapInputRowParser>
 {
   private static final EmittingLogger log = new EmittingLogger(JDBCFirehoseFactory.class);
 
+  @JsonProperty
   private final MetadataStorageConnectorConfig connectorConfig;
+  @JsonProperty
   private final String table;
+  @JsonProperty
   private final List<String> columns;
 
   @JsonCreator
@@ -73,56 +75,74 @@ public class JDBCFirehoseFactory implements FirehoseFactory<MapInputRowParser>
     this.columns = columns;
   }
 
-  @Override
-  public Firehose connect(final MapInputRowParser parser) throws IOException, ParseException
+  public MetadataStorageConnectorConfig getConnectorConfig()
   {
-    final DBI dbi = new DBI(
+    return connectorConfig;
+  }
+
+  public String getTable()
+  {
+    return table;
+  }
+
+  public List<String> getColumns()
+  {
+    return columns;
+  }
+
+  @Override
+  public Firehose connect(final MapInputRowParser parser) throws IOException, ParseException, IllegalArgumentException
+  {
+    if (columns != null) {
+      verifyParserSpec(parser.getParseSpec(), columns);
+    }
+
+    final Handle handle = new DBI(
         connectorConfig.getConnectURI(),
         connectorConfig.getUser(),
         connectorConfig.getPassword()
-    );
+    ).open();
 
-    final List<String> requiredColumns;
-    if (columns == null) {
-      requiredColumns = null;
-    } else {
-      requiredColumns = columns;
-    }
+    final String query = makeQuery(columns);
 
-    verifyParserSpec(parser.getParseSpec());
+    final ResultIterator<InputRow> rowIterator = handle
+        .createQuery(query)
+        .map(
+            new ResultSetMapper<InputRow>()
+            {
+              List<String> queryColumns = (columns == null) ? Lists.<String>newArrayList(): columns;
 
-    final Iterator<InputRow> rowIterator = dbi.withHandle(
-        new HandleCallback<Iterator<InputRow>>()
-        {
-          @Override
-          public Iterator<InputRow> withHandle(Handle handle) throws Exception
-        {
-            final String query = makeQuery(requiredColumns);
-
-            return handle
-                .createQuery(query)
-                .map(
-                    new ResultSetMapper<InputRow>()
+              @Override
+              public InputRow map(
+                  final int index,
+                  final ResultSet r,
+                  final StatementContext ctx
+              ) throws SQLException
+              {
+                try {
+                  if (queryColumns.size() == 0)
+                  {
+                    ResultSetMetaData metadata = r.getMetaData();
+                    for (int idx = 1; idx <= metadata.getColumnCount(); idx++)
                     {
-                      @Override
-                      public InputRow map(
-                          final int index,
-                          final ResultSet r,
-                          final StatementContext ctx
-                      ) throws SQLException
-                      {
-                        List<Object> values = Lists.newArrayListWithCapacity(requiredColumns.size());
-                        for (String column: requiredColumns) {
-                          values.add(r.getObject(column));
-                        }
-
-                        return parser.parse(convert(values, requiredColumns));
-                      }
+                      queryColumns.add(metadata.getColumnName(idx));
                     }
-                ).iterator();
-          }
-        }
-    );
+                    Preconditions.checkArgument(queryColumns.size() > 0,
+                        String.format("No column in table [%s]", table));
+                    verifyParserSpec(parser.getParseSpec(), queryColumns);
+                  }
+                  ImmutableMap.Builder<String, Object> builder = new ImmutableMap.Builder();
+                  for (String column: queryColumns) {
+                    builder.put(column, r.getObject(column));
+                  }
+                  return parser.parse(builder.build());
+
+                } catch(IllegalArgumentException e) {
+                  throw new SQLException(e);
+                }
+              }
+            }
+        ).iterator();
 
     return new Firehose() {
       @Override
@@ -146,35 +166,71 @@ public class JDBCFirehoseFactory implements FirehoseFactory<MapInputRowParser>
       @Override
       public void close() throws IOException
       {
+        rowIterator.close();
+        handle.close();
       }
     };
   }
 
-  private void verifyParserSpec(ParseSpec parseSpec)
+  @Override
+  public String toString()
+  {
+    return String.format(
+        "JDBCFirehoseFactory= { connectorConfit = { %s }, table = %s, columns = %s}",
+        connectorConfig.toString(),
+        table,
+        columns != null ? StringUtils.join(columns, ',') : "null"
+    );
+  }
+
+  @Override
+  public boolean equals(Object o)
+  {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    JDBCFirehoseFactory that = (JDBCFirehoseFactory)o;
+
+    if (!connectorConfig.equals(that.connectorConfig)) {
+      return false;
+    }
+    if (!table.equals(that.table)) {
+      return false;
+    }
+    if (columns.size() != that.columns.size()) {
+      return false;
+    } else {
+      return CollectionUtils.subtract(columns, that.columns).size() == 0;
+    }
+  }
+
+  private void verifyParserSpec(ParseSpec parseSpec, List<String> storedColumns) throws IllegalArgumentException
   {
     String tsColumn = parseSpec.getTimestampSpec().getTimestampColumn();
-    Preconditions.checkArgument(columns.contains(tsColumn),
+    Preconditions.checkArgument(storedColumns.contains(tsColumn),
         String.format("timestamp column %s is not exists in table %s", tsColumn, table));
 
     for (String dim: parseSpec.getDimensionsSpec().getDimensions())
     {
-      Preconditions.checkArgument(columns.contains(dim),
+      Preconditions.checkArgument(storedColumns.contains(dim),
           String.format("dimension column %s is not exists in table %s", dim, table));
     }
   }
 
   private String makeQuery(List<String> requiredFields)
   {
+    if (requiredFields == null)
+    {
+      return new StringBuilder("SELECT *  FROM ").append(table).toString();
+    }
     return new StringBuilder("SELECT ").append(StringUtils.join(requiredFields, ','))
                                        .append(" from ")
                                        .append(table)
                                        .toString();
-  }
-
-  private Map<String, Object> convert(List<Object> values, List<String> requiredFields)
-  {
-    Preconditions.checkArgument(values.size() == requiredFields.size());
-
-    return Utils.zipMap(requiredFields, values);
   }
 }

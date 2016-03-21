@@ -22,7 +22,7 @@
     <groupId>io.druid.extensions.contrib</groupId>
     <artifactId>druid-jdbc-firehose</artifactId>
     <name>druid-jdbc-firehose</name>
-    <description>druid-jdbc-firehose</description>
+    <description>Druid firehose extensions to support JDBC interface</description>
 
     <parent>
         <groupId>io.druid</groupId>
@@ -44,14 +44,23 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.metamx</groupId>
-            <artifactId>emitter</artifactId>
+            <groupId>io.druid</groupId>
+            <artifactId>druid-server</artifactId>
+            <version>${project.parent.version}</version>
             <scope>provided</scope>
         </dependency>
+
         <!-- Tests -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.druid</groupId>
+            <artifactId>druid-server</artifactId>
+            <version>${project.parent.version}</version>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
     </dependencies>

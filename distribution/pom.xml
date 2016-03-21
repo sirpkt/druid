@@ -90,8 +90,6 @@
                                 <argument>io.druid.extensions:postgresql-metadata-storage</argument>
                                 <argument>-c</argument>
                                 <argument>io.druid.extensions:druid-s3-extensions</argument>
-                                <argument>-c</argument>
-                                <argument>io.druid.extensions:druid-jdbc-firehose</argument>
                             </arguments>
                         </configuration>
                     </execution>
