@@ -25,9 +25,9 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import io.druid.jackson.DefaultObjectMapper;
 import io.druid.query.extraction.ExtractionFn;
-import io.druid.query.extraction.LookupExtractor;
-import io.druid.query.extraction.LookupExtractorFactory;
-import io.druid.query.extraction.LookupReferencesManager;
+import io.druid.query.lookup.LookupExtractor;
+import io.druid.query.lookup.LookupExtractorFactory;
+import io.druid.query.lookup.LookupReferencesManager;
 import io.druid.query.extraction.MapLookupExtractor;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
@@ -36,6 +36,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
@@ -60,6 +61,12 @@ public class LookupDimensionSpecTest
 
       @Override
       public boolean close()
+      {
+        return true;
+      }
+
+      @Override
+      public boolean replaces(@Nullable LookupExtractorFactory other)
       {
         return true;
       }

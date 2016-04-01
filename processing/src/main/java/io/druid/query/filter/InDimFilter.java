@@ -21,8 +21,14 @@ package io.druid.query.filter;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.metamx.common.StringUtils;
+import io.druid.segment.filter.OrFilter;
+import io.druid.segment.filter.SelectorFilter;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -61,7 +67,7 @@ public class InDimFilter implements DimFilter
     int valuesBytesSize = 0;
     int index = 0;
     for (String value : values) {
-      valuesBytes[index] = StringUtils.toUtf8(value);
+      valuesBytes[index] = StringUtils.toUtf8(Strings.nullToEmpty(value));
       valuesBytesSize += valuesBytes[index].length + 1;
       ++index;
     }
@@ -70,7 +76,7 @@ public class InDimFilter implements DimFilter
                                           .put(DimFilterCacheHelper.IN_CACHE_ID)
                                           .put(dimensionBytes)
                                           .put(DimFilterCacheHelper.STRING_SEPARATOR);
-    for (byte [] bytes: valuesBytes) {
+    for (byte[] bytes : valuesBytes) {
       filterCacheKey.put(bytes)
                     .put((byte) 0xFF);
     }
@@ -81,6 +87,26 @@ public class InDimFilter implements DimFilter
   public DimFilter optimize()
   {
     return this;
+  }
+
+  @Override
+  public Filter toFilter()
+  {
+    final List<Filter> selectorFilters = ImmutableList.copyOf(
+        Iterables.transform(
+            values,
+            new Function<String, Filter>()
+            {
+              @Override
+              public Filter apply(String input)
+              {
+                return new SelectorFilter(dimension, input);
+              }
+            }
+        )
+    );
+
+    return new OrFilter(selectorFilters);
   }
 
   @Override

@@ -82,6 +82,8 @@ instance of a Druid [overlord](../design/indexing-service.html). A sample task i
 |hadoopDependencyCoordinates|A JSON array of Hadoop dependency coordinates that Druid will use, this property will override the default Hadoop coordinates. Once specified, Druid will look for those Hadoop dependencies from the location specified by `druid.extensions.hadoopDependenciesDir`|no|
 |classpathPrefix|Classpath that will be pre-appended for the peon process.|no|
 
+also note that, druid automatically computes the classpath for hadoop job containers that run in hadoop cluster. But, in case of conflicts between hadoop and druid's dependencies, you can manually specify the classpath by setting `druid.extensions.hadoopContainerDruidClasspath` property. See the extensions config in [base druid configuration](../configuration/index.html).
+
 ### DataSchema
 
 This field is required. See [Ingestion](../ingestion/index.html).
@@ -192,6 +194,7 @@ The configuration options are:
 |type|Type of partitionSpec to be used.|"hashed"|
 |targetPartitionSize|Target number of rows to include in a partition, should be a number that targets segments of 500MB\~1GB.|either this or numShards|
 |numShards|Specify the number of partitions directly, instead of a target partition size. Ingestion will run faster, since it can skip the step necessary to select a number of partitions automatically.|either this or targetPartitionSize|
+|partitionDimensions|The dimensions to partition on. Leave blank to select all dimensions. Only used with numShards, will be ignored when targetPartitionSize is set|no|
 
 #### Single-dimension partitioning
 
@@ -238,7 +241,7 @@ classification=yarn-site,properties=[mapreduce.reduce.memory.mb=6144,mapreduce.r
 ```
 
 - Follow the instructions under "[Configure Hadoop for data
-loads](cluster.html#configure-cluster-for-hadoop-data-loads)" using the XML files from
+loads](../tutorials/cluster.html#configure-cluster-for-hadoop-data-loads)" using the XML files from
 `/etc/hadoop/conf` on your EMR master.
 
 #### Loading from S3 with EMR
@@ -268,7 +271,7 @@ Druid works out of the box with many Hadoop distributions.
 
 If you are having dependency conflicts between Druid and your version of Hadoop, you can try
 searching for a solution in the [Druid user groups](https://groups.google.com/forum/#!forum/druid-
-user), or reading the Druid [Different Hadoop Versions](..//operations/other-hadoop.html) documentation.
+user), or reading the Druid [Different Hadoop Versions](../operations/other-hadoop.html) documentation.
 
 ## Command Line Hadoop Indexer
 

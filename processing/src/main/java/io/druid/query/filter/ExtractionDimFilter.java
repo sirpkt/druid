@@ -26,8 +26,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.metamx.common.StringUtils;
 import io.druid.query.extraction.ExtractionFn;
-import io.druid.query.extraction.LookupExtractionFn;
-import io.druid.query.extraction.LookupExtractor;
+import io.druid.query.lookup.LookupExtractionFn;
+import io.druid.query.lookup.LookupExtractor;
+import io.druid.segment.filter.ExtractionFilter;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -114,6 +115,12 @@ public class ExtractionDimFilter implements DimFilter
       }
     }
     return this;
+  }
+
+  @Override
+  public Filter toFilter()
+  {
+    return new ExtractionFilter(dimension, value, extractionFn);
   }
 
   @Override

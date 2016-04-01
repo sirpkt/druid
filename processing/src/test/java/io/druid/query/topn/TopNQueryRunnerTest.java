@@ -52,7 +52,7 @@ import io.druid.query.dimension.ExtractionDimensionSpec;
 import io.druid.query.extraction.DimExtractionFn;
 import io.druid.query.extraction.ExtractionFn;
 import io.druid.query.extraction.JavaScriptExtractionFn;
-import io.druid.query.extraction.LookupExtractionFn;
+import io.druid.query.lookup.LookupExtractionFn;
 import io.druid.query.extraction.MapLookupExtractor;
 import io.druid.query.extraction.RegexDimExtractionFn;
 import io.druid.query.extraction.TimeFormatExtractionFn;
@@ -377,17 +377,17 @@ public class TopNQueryRunnerTest
             new TopNResultValue(
                 Arrays.<Map<String, Object>>asList(
                     ImmutableMap.<String, Object>builder()
-                                .put("market", "total_market")
-                                .put("uniques", 0)
-                                .build(),
+                        .put("market", "spot")
+                        .put("uniques", 0)
+                        .build(),
                     ImmutableMap.<String, Object>builder()
-                                .put("market", "spot")
-                                .put("uniques", 0)
-                                .build(),
+                        .put("market", "total_market")
+                        .put("uniques", 0)
+                        .build(),
                     ImmutableMap.<String, Object>builder()
-                                .put("market", "upfront")
-                                .put("uniques", 0)
-                                .build()
+                        .put("market", "upfront")
+                        .put("uniques", 0)
+                        .build()
                 )
             )
         )

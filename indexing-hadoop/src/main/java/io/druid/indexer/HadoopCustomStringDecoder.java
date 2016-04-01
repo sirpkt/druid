@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
+import io.druid.data.input.impl.DimensionSchema;
 import com.metamx.common.logger.Logger;
 import io.druid.data.input.InputRow;
 import io.druid.data.input.Row;
@@ -69,7 +70,7 @@ class HadoopCustomStringDecoder implements HadoopCustomDecoder
     final Map<String, String> dimensions = Maps.newHashMap();
     final Map<String, Float> metrics = Maps.newHashMap();
     final Map<String, String> columns = Maps.newHashMap();
-    dimensionList = inputParseSpec.getDimensionsSpec().getDimensions();
+//    dimensionList = inputParseSpec.getDimensionsSpec().getDimensions();
     columnList = inputParseSpec.getColumns();
     final String timeField = inputParseSpec.getTimestampSpec().getTimestampColumn();
 
