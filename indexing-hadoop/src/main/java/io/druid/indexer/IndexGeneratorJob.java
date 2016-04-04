@@ -597,63 +597,85 @@ public class IndexGeneratorJob implements Jobby
           persistExecutor = MoreExecutors.sameThreadExecutor();
         }
 
+        List<InputRow> rows = Lists.newLinkedList();
+        BytesWritable prev = new BytesWritable(key.copyBytes());
+
         for (final BytesWritable bw : values) {
           context.progress();
 
           final InputRow inputRow = index.formatRow(InputRowSerde.fromBytes(bw.getBytes(), aggregators));
-          int numRows = index.add(inputRow);
 
-          ++lineCount;
+          if (!prev.equals(key)) {
+            int numRows = 0;
+            for (InputRow row: rows)
+            {
+              numRows = index.add(row);
 
-          if (!index.canAppendRow()) {
-            allDimensionNames.addAll(index.getDimensionOrder());
+              ++lineCount;
+            }
+            rows.clear();
 
-            log.info(index.getOutOfRowsReason());
-            log.info(
-                "%,d lines to %,d rows in %,d millis",
-                lineCount - runningTotalLineCount,
-                numRows,
-                System.currentTimeMillis() - startTime
-            );
-            runningTotalLineCount = lineCount;
+            if (!index.canAppendRow()) {
+              allDimensionNames.addAll(index.getDimensionOrder());
 
-            final File file = new File(baseFlushFile, String.format("index%,05d", indexCount));
-            toMerge.add(file);
+              log.info(index.getOutOfRowsReason());
+              log.info(
+                  "%,d lines to %,d rows in %,d millis",
+                  lineCount - runningTotalLineCount,
+                  numRows,
+                  System.currentTimeMillis() - startTime
+              );
+              runningTotalLineCount = lineCount;
 
-            context.progress();
-            final IncrementalIndex persistIndex = index;
-            persistFutures.add(
-                persistExecutor.submit(
-                    new ThreadRenamingRunnable(String.format("%s-persist", file.getName()))
-                    {
-                      @Override
-                      public void doRun()
+              final File file = new File(baseFlushFile, String.format("index%,05d", indexCount));
+              toMerge.add(file);
+
+              context.progress();
+              final IncrementalIndex persistIndex = index;
+              persistFutures.add(
+                  persistExecutor.submit(
+                      new ThreadRenamingRunnable(String.format("%s-persist", file.getName()))
                       {
-                        try {
-                          persist(persistIndex, interval, file, progressIndicator);
-                        }
-                        catch (Exception e) {
-                          log.error(e, "persist index error");
-                          throw Throwables.propagate(e);
-                        }
-                        finally {
-                          // close this index
-                          persistIndex.close();
+                        @Override
+                        public void doRun()
+                        {
+                          try {
+                            persist(persistIndex, interval, file, progressIndicator);
+                          }
+                          catch (Exception e) {
+                            log.error(e, "persist index error");
+                            throw Throwables.propagate(e);
+                          }
+                          finally {
+                            // close this index
+                            persistIndex.close();
+                          }
                         }
                       }
-                    }
-                )
-            );
+                  )
+              );
 
-            index = makeIncrementalIndex(
-                bucket,
-                combiningAggs,
-                config,
-                allDimensionNames
-            );
-            startTime = System.currentTimeMillis();
-            ++indexCount;
+              index = makeIncrementalIndex(
+                  bucket,
+                  combiningAggs,
+                  config,
+                  allDimensionNames
+              );
+              startTime = System.currentTimeMillis();
+              ++indexCount;
+            }
           }
+
+          rows.add(inputRow);
+
+          prev.set(key);
+        }
+
+        for (InputRow row: rows)
+        {
+          index.add(row);
+
+          ++lineCount;
         }
 
         allDimensionNames.addAll(index.getDimensionOrder());
