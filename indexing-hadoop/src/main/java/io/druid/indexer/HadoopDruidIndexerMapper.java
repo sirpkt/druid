@@ -19,10 +19,10 @@
 
 package io.druid.indexer;
 
-import com.google.api.client.util.Lists;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.metamx.common.Pair;
 import com.metamx.common.RE;
 import com.metamx.common.logger.Logger;
@@ -181,11 +181,6 @@ public abstract class HadoopDruidIndexerMapper<KEYOUT, VALUEOUT> extends Mapper<
     } else {
       return parser.parse(value);
     }
-  }
-
-  public final static InputRow parseInputRowWithPos(Pair pair, Object value, InputRowParser parser)
-  {
-    return parser.parse(new Pair<>(pair,value));
   }
 
   abstract protected void innerMap(InputRow inputRow, Object value, Context context)
