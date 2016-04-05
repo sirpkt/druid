@@ -472,6 +472,7 @@ public class IndexGeneratorJob implements Jobby
     private List<String> metricNames = Lists.newArrayList();
     private AggregatorFactory[] aggregators;
     private AggregatorFactory[] combiningAggs;
+    private AggregatorFactory[] rangedAggs;
 
     protected ProgressIndicator makeProgressIndicator(final Context context)
     {
@@ -530,9 +531,11 @@ public class IndexGeneratorJob implements Jobby
 
       aggregators = config.getSchema().getDataSchema().getAggregators();
       combiningAggs = new AggregatorFactory[aggregators.length];
+      rangedAggs = new AggregatorFactory[aggregators.length];
       for (int i = 0; i < aggregators.length; ++i) {
         metricNames.add(aggregators[i].getName());
         combiningAggs[i] = aggregators[i].getCombiningFactory();
+        rangedAggs[i] = combiningAggs[i];
       }
     }
 
@@ -550,7 +553,7 @@ public class IndexGeneratorJob implements Jobby
       List<ListenableFuture<?>> persistFutures = Lists.newArrayList();
       IncrementalIndex index = makeIncrementalIndex(
           bucket,
-          combiningAggs,
+          rangedAggs,
           config,
           null
       );
@@ -606,6 +609,7 @@ public class IndexGeneratorJob implements Jobby
           final InputRow inputRow = index.formatRow(InputRowSerde.fromBytes(bw.getBytes(), aggregators));
 
           if (!prev.equals(key)) {
+            prev.set(key);
             int numRows = 0;
             for (InputRow row: rows)
             {
@@ -657,7 +661,7 @@ public class IndexGeneratorJob implements Jobby
 
               index = makeIncrementalIndex(
                   bucket,
-                  combiningAggs,
+                  rangedAggs,
                   config,
                   allDimensionNames
               );
@@ -667,8 +671,6 @@ public class IndexGeneratorJob implements Jobby
           }
 
           rows.add(inputRow);
-
-          prev.set(key);
         }
 
         for (InputRow row: rows)
