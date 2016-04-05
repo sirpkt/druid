@@ -103,7 +103,6 @@
         <module>extensions-contrib/rabbitmq</module>
         <module>extensions-contrib/distinctcount</module>
         <module>extensions-contrib/parquet-extensions</module>
-        <module>extensions-contrib/ranged-agg</module>
 
         <!-- distribution packaging -->
         <module>distribution</module>
