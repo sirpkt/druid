@@ -469,6 +469,7 @@ public class IndexGeneratorJob implements Jobby
   public static class IndexGeneratorReducer extends Reducer<BytesWritable, BytesWritable, BytesWritable, Text>
   {
     protected HadoopDruidIndexerConfig config;
+    protected HadoopSettlingConfig settlingConfig;
     private List<String> metricNames = Lists.newArrayList();
     private AggregatorFactory[] aggregators;
     private AggregatorFactory[] combiningAggs;
@@ -528,6 +529,7 @@ public class IndexGeneratorJob implements Jobby
         throws IOException, InterruptedException
     {
       config = HadoopDruidIndexerConfig.fromConfiguration(context.getConfiguration());
+      settlingConfig = config.getSchema().getSettlingConfig();
 
       aggregators = config.getSchema().getDataSchema().getAggregators();
       combiningAggs = new AggregatorFactory[aggregators.length];
@@ -611,6 +613,10 @@ public class IndexGeneratorJob implements Jobby
           if (!prev.equals(key)) {
             prev.set(key);
             int numRows = 0;
+            if (settlingConfig != null) {
+              // adjust aggregator factory
+              settlingConfig.applySettling(rows.get(0), combiningAggs, rangedAggs);
+            }
             for (InputRow row: rows)
             {
               numRows = index.add(row);
@@ -673,6 +679,10 @@ public class IndexGeneratorJob implements Jobby
           rows.add(inputRow);
         }
 
+        if (settlingConfig != null) {
+          // adjust aggregator factory
+          settlingConfig.applySettling(rows.get(0), combiningAggs, rangedAggs);
+        }
         for (InputRow row: rows)
         {
           index.add(row);
