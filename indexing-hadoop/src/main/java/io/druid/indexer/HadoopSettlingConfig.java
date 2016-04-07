@@ -85,9 +85,46 @@ public class HadoopSettlingConfig
     fillMap();
   }
 
-  public int mapSize()
+  @JsonProperty("connectorConfig")
+  public MetadataStorageConnectorConfig getConfig()
   {
-    return settlingMap.size();
+    return config;
+  }
+
+  @JsonProperty("query")
+  public String getQuery()
+  {
+    return query;
+  }
+
+  @JsonProperty("constColumns")
+  public List<String> getConstColumns()
+  {
+    return constColumns;
+  }
+
+  @JsonProperty("regexColumns")
+  public List<String> getRegexColumns()
+  {
+    return regexColumns;
+  }
+
+  @JsonProperty("typeColumn")
+  public String getAggTypeColumn()
+  {
+    return aggTypeColumn;
+  }
+
+  @JsonProperty("offsetColumn")
+  public String getOffsetColumn()
+  {
+    return offsetColumn;
+  }
+
+  @JsonProperty("sizeColumn")
+  public String getSizeColumn()
+  {
+    return sizeColumn;
   }
 
   public void applySettling(InputRow row, AggregatorFactory[] org, AggregatorFactory[] applied)
@@ -136,21 +173,26 @@ public class HadoopSettlingConfig
     int index = 0;
     for (String column: constColumns) {
       // it assumes that dimension value is not array
-      dimValues[index++] = row.getDimension(column).get(0);
+      List<String> constDims = row.getDimension(column);
+      dimValues[index++] = (constDims.size() == 0) ? null : constDims.get(0);
     }
     MultiKey key = new MultiKey(dimValues, false);
     Map<HadoopSettlingMatcher, Map<String, Pair<Integer, Integer>>> matcherMap = settlingMap.get(key);
 
-    index = 0;
-    for (String column: regexColumns) {
-      // it assumes that dimension value is not array
-      regexValues[index++] = row.getDimension(column).get(0);
-    }
-
-    for (Map.Entry<HadoopSettlingMatcher, Map<String, Pair<Integer, Integer>>> matcher: matcherMap.entrySet())
+    if (matcherMap != null)
     {
-      if (matcher.getKey().matches(regexValues)) {
-        return matcher.getValue();
+      index = 0;
+      for (String column: regexColumns) {
+        // it assumes that dimension value is not array
+        List<String> regexDims = row.getDimension(column);
+        regexValues[index++] = (regexDims.size() == 0) ? null: regexDims.get(0);
+      }
+
+      for (Map.Entry<HadoopSettlingMatcher, Map<String, Pair<Integer, Integer>>> matcher: matcherMap.entrySet())
+      {
+        if (matcher.getKey().matches(regexValues)) {
+          return matcher.getValue();
+        }
       }
     }
 

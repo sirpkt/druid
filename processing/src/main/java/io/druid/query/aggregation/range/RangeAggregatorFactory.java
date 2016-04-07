@@ -40,7 +40,8 @@ public class RangeAggregatorFactory extends AggregatorFactory
   private static final byte CACHE_TYPE_ID = 30;
 
   private final AggregatorFactory delegateFactory;
-  private final int offset, size;
+  private final int rangeStart;
+  private final int rangeCount;
 
   public enum RangeState {
     beforeStart,
@@ -56,8 +57,26 @@ public class RangeAggregatorFactory extends AggregatorFactory
   )
   {
     this.delegateFactory = Preconditions.checkNotNull(delegateFactory);
-    this.offset = Preconditions.checkNotNull(offset);
-    this.size = Preconditions.checkNotNull(size);
+    this.rangeStart = Preconditions.checkNotNull(offset);
+    this.rangeCount = Preconditions.checkNotNull(size);
+  }
+
+  @JsonProperty
+  public AggregatorFactory getDelegateFactory()
+  {
+    return delegateFactory;
+  }
+
+  @JsonProperty
+  public Integer getRangeStart()
+  {
+    return rangeStart;
+  }
+
+  @JsonProperty
+  public Integer getRangeCount()
+  {
+    return rangeCount;
   }
 
   @Override
@@ -65,7 +84,7 @@ public class RangeAggregatorFactory extends AggregatorFactory
   {
     Aggregator delegate = delegateFactory.factorize(metricFactory);
 
-    return new RangeAggregator(delegate, offset, size);
+    return new RangeAggregator(delegate, rangeStart, rangeCount);
   }
 
   @Override
@@ -73,7 +92,7 @@ public class RangeAggregatorFactory extends AggregatorFactory
   {
     BufferAggregator delegate = delegateFactory.factorizeBuffered(metricFactory);
 
-    return new RangeBufferAggregator(delegate, offset, size);
+    return new RangeBufferAggregator(delegate, rangeStart, rangeCount);
   }
 
   @Override
@@ -97,7 +116,7 @@ public class RangeAggregatorFactory extends AggregatorFactory
   @Override
   public List<AggregatorFactory> getRequiredColumns()
   {
-    return Arrays.<AggregatorFactory>asList(new RangeAggregatorFactory(delegateFactory, offset, size));
+    return Arrays.<AggregatorFactory>asList(new RangeAggregatorFactory(delegateFactory, rangeStart, rangeCount));
   }
 
   @Override
@@ -132,9 +151,9 @@ public class RangeAggregatorFactory extends AggregatorFactory
         .put(CACHE_TYPE_ID)
         .put(delegateBytes)
         .put(AggregatorUtil.STRING_SEPARATOR)
-        .putInt(offset)
+        .putInt(rangeStart)
         .put(AggregatorUtil.STRING_SEPARATOR)
-        .putInt(size)
+        .putInt(rangeCount)
         .array();
   }
 
@@ -172,10 +191,10 @@ public class RangeAggregatorFactory extends AggregatorFactory
       return false;
     }
 
-    if (offset != that.offset) {
+    if (rangeStart != that.rangeStart) {
       return false;
     }
-    if (size != that.size) {
+    if (rangeCount != that.rangeCount) {
       return false;
     }
 
@@ -185,7 +204,7 @@ public class RangeAggregatorFactory extends AggregatorFactory
   @Override
   public int hashCode()
   {
-    int result = 31 * offset + size;
+    int result = 31 * rangeStart + rangeCount;
     result = 31 * result + delegateFactory.hashCode();
     return result;
   }
@@ -195,7 +214,7 @@ public class RangeAggregatorFactory extends AggregatorFactory
   {
     return "RangeAggregatorFactory{" +
            "delegate=" + delegateFactory +
-           "offset=" + offset + "size=" + size +
+           "rangeStart=" + rangeStart + "rangeCount=" + rangeCount +
            "}";
   }
 }

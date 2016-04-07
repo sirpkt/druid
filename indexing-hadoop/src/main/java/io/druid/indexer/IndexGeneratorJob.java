@@ -173,8 +173,13 @@ public class IndexGeneratorJob implements Jobby
       }
 
       if (config.getSchema().getTuningConfig().getUseCombiner()) {
-        job.setCombinerClass(IndexGeneratorCombiner.class);
-        job.setCombinerKeyGroupingComparatorClass(BytesWritable.Comparator.class);
+        // when settling is used, combiner should be turned off
+        if (config.getSchema().getSettlingConfig() == null) {
+          job.setCombinerClass(IndexGeneratorCombiner.class);
+          job.setCombinerKeyGroupingComparatorClass(BytesWritable.Comparator.class);
+        } else {
+          log.error("Combiner is set but ignored as settling cannot use combiner");
+        }
       }
 
       job.setNumReduceTasks(numReducers);
