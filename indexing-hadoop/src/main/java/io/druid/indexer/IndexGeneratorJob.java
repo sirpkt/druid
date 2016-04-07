@@ -300,9 +300,10 @@ public class IndexGeneratorJob implements Jobby
           new SortableBytes(
               bucket.get().toGroupKey(),
               // sort rows by truncated timestamp and hashed dimensions to help reduce spilling on the reducer side
-              ByteBuffer.allocate(Longs.BYTES + hashedDimensions.length)
+              ByteBuffer.allocate(Longs.BYTES + hashedDimensions.length + Longs.BYTES)
                         .putLong(truncatedTimestamp)
                         .put(hashedDimensions)
+                        .putLong(inputRow.getTimestampFromEpoch())
                         .array()
           ).toBytesWritable(),
           new BytesWritable(serializedInputRow)
@@ -608,15 +609,18 @@ public class IndexGeneratorJob implements Jobby
         }
 
         List<InputRow> rows = Lists.newLinkedList();
-        BytesWritable prev = new BytesWritable(key.copyBytes());
+        int lengthSkipLastTS = key.getLength() - Longs.BYTES;
+        byte[] firstKeyBytes = new byte[lengthSkipLastTS];
+        System.arraycopy(key.getBytes(), 0, firstKeyBytes, 0, lengthSkipLastTS);
+        BytesWritable prev = new BytesWritable(firstKeyBytes);
 
         for (final BytesWritable bw : values) {
           context.progress();
 
           final InputRow inputRow = index.formatRow(InputRowSerde.fromBytes(bw.getBytes(), aggregators));
 
-          if (!prev.equals(key)) {
-            prev.set(key);
+          if (prev.compareTo(key.getBytes(), 0, lengthSkipLastTS) != 0) {
+            prev.set(key.getBytes(), 0, lengthSkipLastTS);
             int numRows = 0;
             if (settlingConfig != null) {
               // adjust aggregator factory
