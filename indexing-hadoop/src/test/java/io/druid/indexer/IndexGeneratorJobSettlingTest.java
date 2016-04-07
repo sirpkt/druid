@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.io.Files;
 import com.metamx.common.Granularity;
 import io.druid.data.input.impl.CSVParseSpec;
 import io.druid.data.input.impl.DimensionsSpec;
@@ -40,6 +41,9 @@ import io.druid.query.aggregation.AggregatorFactory;
 import io.druid.query.aggregation.CountAggregatorFactory;
 import io.druid.query.aggregation.LongSumAggregatorFactory;
 import io.druid.query.aggregation.hyperloglog.HyperUniquesAggregatorFactory;
+import io.druid.segment.QueryableIndex;
+import io.druid.segment.QueryableIndexIndexableAdapter;
+import io.druid.segment.Rowboat;
 import io.druid.segment.indexing.DataSchema;
 import io.druid.segment.indexing.granularity.UniformGranularitySpec;
 import io.druid.timeline.DataSegment;
@@ -59,6 +63,7 @@ import org.apache.hadoop.io.SequenceFile.Writer;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
+import org.apache.hadoop.util.Progressable;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeComparator;
 import org.joda.time.Interval;
@@ -70,16 +75,16 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
-@RunWith(Parameterized.class)
 public class IndexGeneratorJobSettlingTest
 {
   private String hiveConnectorMeta = "{\"createTables\":true,\"connectURI\":\"jdbc:hive2://emn-g04-03:10000\",\"user\":\"hadoop\",\"password\":\"hadoop\"}";
@@ -95,102 +100,71 @@ public class IndexGeneratorJobSettlingTest
       new LongSumAggregatorFactory("visited_num", "visited_num")
   };
 
-  @Parameterized.Parameters(name = "partitionType={0}, interval={1}, shardInfoForEachSegment={2}, " +
-      "data={3}, inputFormatName={4}, inputRowParser={5}, maxRowsInMemory={6}, " +
-      "aggs={7}, datasourceName={8}")
-  public static Collection<Object[]> constructFeed()
-  {
-    final List<Object[]> baseConstructors = Arrays.asList(
-        new Object[][]{
-            {
-                "hashed",
-                "2014-10-22T00:00:00Z/P1D",
-                new Integer[][][]{
-                    {
-                        {0, 4},
-                        {1, 4},
-                        {2, 4},
-                        {3, 4}
-                    }
-                },
-                ImmutableList.of(
-                    "2014102200,a.example.com,100",
-                    "2014102201,b.exmaple.com,50",
-                    "2014102202,c.example.com,200",
-                    "2014102203,d.example.com,250",
-                    "2014102204,e.example.com,123",
-                    "2014102205,f.example.com,567",
-                    "2014102206,g.example.com,11",
-                    "2014102207,h.example.com,251",
-                    "2014102208,i.example.com,963",
-                    "2014102209,j.example.com,333",
-                    "2014102210,k.example.com,253",
-                    "2014102211,l.example.com,321",
-                    "2014102212,m.example.com,3125",
-                    "2014102213,n.example.com,234",
-                    "2014102214,o.example.com,325",
-                    "2014102215,p.example.com,3533",
-                    "2014102216,q.example.com,500",
-                    "2014102216,q.example.com,87"
-                ),
-                null,
-                new HadoopyStringInputRowParser(
-                    new CSVParseSpec(
-                        new TimestampSpec("timestamp", "yyyyMMddHH", null),
-                        new DimensionsSpec(DimensionsSpec.getDefaultSchemas(ImmutableList.of("host")), null, null),
-                        null,
-                        ImmutableList.of("timestamp", "host", "visited_num")
-                    )
-                ),
-                null,
-                aggs1,
-                "website"
-            }
-        }
-    );
-
-    return baseConstructors;
-  }
-
   @Rule
   public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-  private final String partitionType;
-  private final Interval interval;
-  private final Object[][][] shardInfoForEachSegment;
-  private final List<String> data;
-  private final String inputFormatName;
-  private final InputRowParser inputRowParser;
-  private final Integer maxRowsInMemory;
-  private final AggregatorFactory[] aggs;
-  private final String datasourceName;
+  private final String partitionType = "hashed";
+  private final Interval interval = new Interval("2014-10-22T00:00:00Z/P1D");
+  private final Object[][][] shardInfoForEachSegment = new Integer[][][]{{{0, 1}}};
+  private final List<String> data = ImmutableList.of(
+      "2014102200,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,1",
+      "2014102200,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,1",
+      "2014102200,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,1",
+      "2014102201,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,2",
+      "2014102201,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,2",
+      "2014102201,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,2",
+      "2014102202,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,3",
+      "2014102202,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,3",
+      "2014102202,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,3",
+      "2014102203,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,4",
+      "2014102203,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,4",
+      "2014102203,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,4",
+      "2014102204,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,5",
+      "2014102204,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,5",
+      "2014102204,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,5",
+      "2014102205,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,6",
+      "2014102205,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,6",
+      "2014102205,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,6",
+      "2014102206,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,7",
+      "2014102206,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,7",
+      "2014102206,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,7",
+      "2014102207,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,8",
+      "2014102207,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,8",
+      "2014102207,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,8",
+      "2014102208,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,9",
+      "2014102208,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,9",
+      "2014102208,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,9",
+      "2014102209,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,10",
+      "2014102209,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,10",
+      "2014102209,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,10",
+      "2014102210,ETO410_PM3,VPP_UPPER,1,AGTHM,ABC,11",
+      "2014102210,ETO410_PM6,VPP_UPPER,1,AGTHM,ABC,11",
+      "2014102210,ETO410_PM7,VPP_UPPER,1,AGTHM,ABC,11"
+  );
+  private final String inputFormatName = null;
+  private final InputRowParser inputRowParser = new HadoopyStringInputRowParser(
+      new CSVParseSpec(
+          new TimestampSpec("timestamp", "yyyyMMddHH", null),
+          new DimensionsSpec(DimensionsSpec.getDefaultSchemas(
+              ImmutableList.of("module_name", "eqp_param_name", "eqp_recipe_id", "eqp_step_id", "lot_code")
+          ), null, null),
+          null,
+          ImmutableList.of("timestamp", "module_name", "eqp_param_name", "eqp_step_id", "eqp_recipe_id", "lot_code", "visited_num")
+      )
+  );
+  private final Integer maxRowsInMemory = null;
+  private final AggregatorFactory[] aggs = {
+      new LongSumAggregatorFactory("visited_num", "visited_num")
+  };
+  private final String datasourceName = "website";
 
   private ObjectMapper mapper;
   private HadoopDruidIndexerConfig config;
   private File dataFile;
   private File tmpDir;
 
-  public IndexGeneratorJobSettlingTest(
-      String partitionType,
-      String interval,
-      Object[][][] shardInfoForEachSegment,
-      List<String> data,
-      String inputFormatName,
-      InputRowParser inputRowParser,
-      Integer maxRowsInMemory,
-      AggregatorFactory[] aggs,
-      String datasourceName
-  ) throws IOException
+  public IndexGeneratorJobSettlingTest()
   {
-    this.partitionType = partitionType;
-    this.shardInfoForEachSegment = shardInfoForEachSegment;
-    this.interval = new Interval(interval);
-    this.data = data;
-    this.inputFormatName = inputFormatName;
-    this.inputRowParser = inputRowParser;
-    this.maxRowsInMemory = maxRowsInMemory;
-    this.aggs = aggs;
-    this.datasourceName = datasourceName;
   }
 
   private void writeDataToLocalSequenceFile(File outputFile, List<String> data) throws IOException
@@ -258,7 +232,7 @@ public class IndexGeneratorJobSettlingTest
                 ),
                 aggs,
                 new UniformGranularitySpec(
-                    Granularity.DAY, QueryGranularity.NONE, ImmutableList.of(this.interval)
+                    Granularity.DAY, QueryGranularity.DAY, ImmutableList.of(this.interval)
                 ),
                 mapper
             ),
@@ -384,36 +358,73 @@ public class IndexGeneratorJobSettlingTest
         Assert.assertEquals(indexZip.getCanonicalPath(), dataSegment.getLoadSpec().get("path"));
         Assert.assertEquals(Integer.valueOf(9), dataSegment.getBinaryVersion());
 
-        if (datasourceName.equals("website")) {
-          Assert.assertEquals("website", dataSegment.getDataSource());
-          Assert.assertEquals("host", dataSegment.getDimensions().get(0));
-          Assert.assertEquals("visited_num", dataSegment.getMetrics().get(0));
-        } else if (datasourceName.equals("inherit_dims")) {
-          Assert.assertEquals("inherit_dims", dataSegment.getDataSource());
-          Assert.assertEquals(ImmutableList.of("X", "Y", "M", "Q", "B", "F"), dataSegment.getDimensions());
-          Assert.assertEquals("count", dataSegment.getMetrics().get(0));
-        } else if (datasourceName.equals("inherit_dims2")) {
-          Assert.assertEquals("inherit_dims2", dataSegment.getDataSource());
-          Assert.assertEquals(ImmutableList.of("B", "F", "M", "Q", "X", "Y"), dataSegment.getDimensions());
-          Assert.assertEquals("count", dataSegment.getMetrics().get(0));
-        } else {
-          Assert.fail("Test did not specify supported datasource name");
-        }
+        Assert.assertEquals(datasourceName, dataSegment.getDataSource());
+        Assert.assertEquals("module_name", dataSegment.getDimensions().get(0));
+        Assert.assertEquals("eqp_param_name", dataSegment.getDimensions().get(1));
+        Assert.assertEquals("eqp_recipe_id", dataSegment.getDimensions().get(2));
+        Assert.assertEquals("eqp_step_id", dataSegment.getDimensions().get(3));
+        Assert.assertEquals("lot_code", dataSegment.getDimensions().get(4));
+        Assert.assertEquals("visited_num", dataSegment.getMetrics().get(0));
 
-        if (partitionType.equals("hashed")) {
-          Integer[] hashShardInfo = (Integer[]) shardInfo[partitionNum];
-          HashBasedNumberedShardSpec spec = (HashBasedNumberedShardSpec) dataSegment.getShardSpec();
-          Assert.assertEquals((int) hashShardInfo[0], spec.getPartitionNum());
-          Assert.assertEquals((int) hashShardInfo[1], spec.getPartitions());
-        } else if (partitionType.equals("single")) {
-          String[] singleDimensionShardInfo = (String[]) shardInfo[partitionNum];
-          SingleDimensionShardSpec spec = (SingleDimensionShardSpec) dataSegment.getShardSpec();
-          Assert.assertEquals(singleDimensionShardInfo[0], spec.getStart());
-          Assert.assertEquals(singleDimensionShardInfo[1], spec.getEnd());
-        } else {
-          throw new RuntimeException(String.format("Invalid partition type:[%s]", partitionType));
+        Integer[] hashShardInfo = (Integer[]) shardInfo[partitionNum];
+        HashBasedNumberedShardSpec spec = (HashBasedNumberedShardSpec) dataSegment.getShardSpec();
+        Assert.assertEquals((int) hashShardInfo[0], spec.getPartitionNum());
+        Assert.assertEquals((int) hashShardInfo[1], spec.getPartitions());
+
+        File dir = Files.createTempDir();
+
+        unzip(indexZip, dir);
+
+        QueryableIndex index = HadoopDruidIndexerConfig.INDEX_IO.loadIndex(dir);
+        QueryableIndexIndexableAdapter adapter = new QueryableIndexIndexableAdapter(index);
+
+        Assert.assertTrue(index.getNumRows() > 0);
+
+        int count60 = 0;
+        int count66 = 0;
+        for (Rowboat row : adapter.getRows())
+        {
+          Long sum = (Long)row.getMetrics()[0];
+          if (sum == 60) {
+            count60++;
+          } else if (sum == 66) {
+            count66++;
+          }
+        }
+        Assert.assertTrue(count60 == 1);
+        Assert.assertTrue(count66 == 2);
+      }
+    }
+  }
+
+  private void unzip(File zip, File outDir)
+  {
+    try {
+      long size = 0L;
+      final byte[] buffer = new byte[1 << 13];
+      try (ZipInputStream in = new ZipInputStream(new FileInputStream(zip))) {
+        for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+          final String fileName = entry.getName();
+          try (final OutputStream out = new BufferedOutputStream(
+              new FileOutputStream(
+                  outDir.getAbsolutePath()
+                      + File.separator
+                      + fileName
+              ), 1 << 13
+          )) {
+            for (int len = in.read(buffer); len >= 0; len = in.read(buffer)) {
+              if (len == 0) {
+                continue;
+              }
+              size += len;
+              out.write(buffer, 0, len);
+            }
+            out.flush();
+          }
         }
       }
+    }
+    catch (IOException | RuntimeException exception) {
     }
   }
 
