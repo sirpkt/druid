@@ -49,7 +49,7 @@ public class HadoopIngestionSpec extends IngestionSpec<HadoopIOConfig, HadoopTun
   private final DataSchema dataSchema;
   private final HadoopIOConfig ioConfig;
   private final HadoopTuningConfig tuningConfig;
-  private final HadoopSettlingConfig settlingConfig;
+  private final SettlingConfig settlingConfig;
 
   //this is used in the temporary paths on the hdfs unique to an hadoop indexing task
   private final String uniqueId;
@@ -60,7 +60,7 @@ public class HadoopIngestionSpec extends IngestionSpec<HadoopIOConfig, HadoopTun
       @JsonProperty("ioConfig") HadoopIOConfig ioConfig,
       @JsonProperty("tuningConfig") HadoopTuningConfig tuningConfig,
       @JsonProperty("uniqueId") String uniqueId,
-      @JsonProperty("settlingConfig") HadoopSettlingConfig settlingConfig
+      @JsonProperty("settlingConfig") SettlingConfig settlingConfig
   )
   {
     super(dataSchema, ioConfig, tuningConfig);
@@ -110,7 +110,7 @@ public class HadoopIngestionSpec extends IngestionSpec<HadoopIOConfig, HadoopTun
   }
 
   @JsonProperty("settlingConfig")
-  public HadoopSettlingConfig getSettlingConfig()
+  public SettlingConfig getSettlingConfig()
   {
     return settlingConfig;
   }
@@ -148,7 +148,7 @@ public class HadoopIngestionSpec extends IngestionSpec<HadoopIOConfig, HadoopTun
     );
   }
 
-  public HadoopIngestionSpec withSettlingConfig(HadoopSettlingConfig config)
+  public HadoopIngestionSpec withSettlingConfig(SettlingConfig config)
   {
     return new HadoopIngestionSpec(
         dataSchema,

@@ -475,7 +475,7 @@ public class IndexGeneratorJob implements Jobby
   public static class IndexGeneratorReducer extends Reducer<BytesWritable, BytesWritable, BytesWritable, Text>
   {
     protected HadoopDruidIndexerConfig config;
-    protected HadoopSettlingConfig settlingConfig;
+    protected SettlingConfig settlingConfig;
     private List<String> metricNames = Lists.newArrayList();
     private AggregatorFactory[] aggregators;
     private AggregatorFactory[] combiningAggs;

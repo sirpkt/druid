@@ -270,6 +270,32 @@ public class HadoopIngestionSpecTest
   }
 
   @Test
+  public void testHadoopSettlingConfig() throws Exception
+  {
+    final HadoopIngestionSpec schema = jsonReadWriteRead(
+        "{\"settlingConfig\" : {\n" +
+            "      \"type\" : \"jdbc\",\n" +
+            "      \"connectorConfig\" : {\n" +
+            "        \"connectURI\" : \"jdbc:hive2://emn-g04-03:10000\",\n" +
+            "        \"user\" : \"hadoop\",\n" +
+            "        \"password\" : \"hadoop\"\n" +
+            "      },\n" +
+            "      \"query\" : \"select module_name,eqp_param_name,eqp_recipe_id,eqp_step_id,lot_code,sum_type_cd,count_settling,count_activation from big_fdc_settling_info where count_settling > 0.0 and count_activation != -1.0\",\n" +
+            "      \"constColumns\" : [ \"module_name\", \"eqp_param_name\" ],\n" +
+            "      \"regexColumns\" : [ \"eqp_recipe_id\", \"eqp_step_id\", \"lot_code\" ],\n" +
+            "      \"typeColumn\" : \"sum_type_cd\",\n" +
+            "      \"offsetColumn\" : \"count_settling\",\n" +
+            "      \"sizeColumn\" : \"count_activation\"\n" +
+            "    }}",
+        HadoopIngestionSpec.class
+    );
+
+    SettlingConfig settlingConfig = schema.getSettlingConfig();
+
+    Assert.assertNotNull(settlingConfig);
+  }
+
+  @Test
   public void testNoCleanupOnFailure()
   {
     final HadoopIngestionSpec schema;

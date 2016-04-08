@@ -35,7 +35,7 @@ import org.skife.jdbi.v2.Handle;
 import java.util.List;
 import java.util.Map;
 
-public class HadoopSettlingConfig
+public class HadoopSettlingConfig implements SettlingConfig
 {
   final private MetadataStorageConnectorConfig config;
   final private String query;
@@ -127,6 +127,7 @@ public class HadoopSettlingConfig
     return sizeColumn;
   }
 
+  @Override
   public void applySettling(InputRow row, AggregatorFactory[] org, AggregatorFactory[] applied)
   {
     Map<String, Pair<Integer, Integer>> mapForRow = getValueMap(row);
