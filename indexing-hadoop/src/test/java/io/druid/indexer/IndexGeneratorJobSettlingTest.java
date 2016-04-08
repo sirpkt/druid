@@ -378,7 +378,7 @@ public class IndexGeneratorJobSettlingTest
         QueryableIndex index = HadoopDruidIndexerConfig.INDEX_IO.loadIndex(dir);
         QueryableIndexIndexableAdapter adapter = new QueryableIndexIndexableAdapter(index);
 
-        Assert.assertTrue(index.getNumRows() > 0);
+        Assert.assertTrue(index.getNumRows() == 3);
 
         int count60 = 0;
         int count66 = 0;
