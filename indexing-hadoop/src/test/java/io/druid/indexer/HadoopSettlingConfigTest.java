@@ -73,6 +73,7 @@ public class HadoopSettlingConfigTest
         offsetColumn,
         sizeColumn
     );
+    settlingConfig.setUp();
   }
 
   @Test

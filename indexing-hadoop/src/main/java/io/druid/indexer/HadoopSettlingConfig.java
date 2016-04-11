@@ -80,9 +80,6 @@ public class HadoopSettlingConfig implements SettlingConfig
     dimValues = new String[constColumns.size()];
     regexValues = new String[regexColumns.size()];
     matcherFactory = new HadoopSettlingMatcherFactory();
-
-    // fill the Map in advance
-    fillMap();
   }
 
   @JsonProperty("connectorConfig")
@@ -128,8 +125,63 @@ public class HadoopSettlingConfig implements SettlingConfig
   }
 
   @Override
+  public void setUp()
+  {
+    if (!getSource) {
+      // connect through the given connector
+      final Handle handle = new DBI(
+          config.getConnectURI(),
+          config.getUser(),
+          config.getPassword()
+      ).open();
+
+      // fill the Map
+      List<Map<String, Object>> results = handle.select(query);
+      String[] keys = new String[constColumns.size()];
+      String[] regexKeys = new String[regexColumns.size()];
+      for (Map<String, Object> row: results)
+      {
+        int idx = 0;
+        for (String column: constColumns)
+        {
+          keys[idx++] = (String)row.get(column);
+        }
+        MultiKey key = new MultiKey(keys);
+        Map<HadoopSettlingMatcher, Map<String, Pair<Integer, Integer>>> settlingMatcherMap = settlingMap.get(key);
+        if (settlingMatcherMap == null) {
+          settlingMatcherMap = Maps.newHashMap();
+          settlingMap.put(key, settlingMatcherMap);
+        }
+
+        idx = 0;
+        for (String column: regexColumns)
+        {
+          regexKeys[idx++] = (String)row.get(column);
+        }
+        HadoopSettlingMatcher settlingMatcher = matcherFactory.getSettlingMatcher(regexKeys);
+        Map<String, Pair<Integer, Integer>> map = settlingMatcherMap.get(settlingMatcher);
+        if (map == null) {
+          map = Maps.newHashMap();
+          settlingMatcherMap.put(settlingMatcher, map);
+        }
+
+        String type = (String)row.get(aggTypeColumn);
+        Pair<Integer, Integer> value =
+            new Pair<>((int)Float.parseFloat((String)row.get(offsetColumn)), (int)Float.parseFloat((String)row.get(sizeColumn)));
+        map.put(type, value);
+      }
+
+      handle.close();
+
+      getSource = true;
+    }
+  }
+
+  @Override
   public void applySettling(InputRow row, AggregatorFactory[] org, AggregatorFactory[] applied)
   {
+    Preconditions.checkArgument(getSource, "setUp() should be called before the applySettling()");
+
     Map<String, Pair<Integer, Integer>> mapForRow = getValueMap(row);
 
     if (mapForRow != null)
@@ -198,57 +250,5 @@ public class HadoopSettlingConfig implements SettlingConfig
     }
 
     return null;
-  }
-
-  private void fillMap()
-  {
-    if (!getSource) {
-      // connect through the given connector
-      final Handle handle = new DBI(
-          config.getConnectURI(),
-          config.getUser(),
-          config.getPassword()
-      ).open();
-
-      // fill the Map
-      List<Map<String, Object>> results = handle.select(query);
-      String[] keys = new String[constColumns.size()];
-      String[] regexKeys = new String[regexColumns.size()];
-      for (Map<String, Object> row: results)
-      {
-        int idx = 0;
-        for (String column: constColumns)
-        {
-          keys[idx++] = (String)row.get(column);
-        }
-        MultiKey key = new MultiKey(keys);
-        Map<HadoopSettlingMatcher, Map<String, Pair<Integer, Integer>>> settlingMatcherMap = settlingMap.get(key);
-        if (settlingMatcherMap == null) {
-          settlingMatcherMap = Maps.newHashMap();
-          settlingMap.put(key, settlingMatcherMap);
-        }
-
-        idx = 0;
-        for (String column: regexColumns)
-        {
-          regexKeys[idx++] = (String)row.get(column);
-        }
-        HadoopSettlingMatcher settlingMatcher = matcherFactory.getSettlingMatcher(regexKeys);
-        Map<String, Pair<Integer, Integer>> map = settlingMatcherMap.get(settlingMatcher);
-        if (map == null) {
-          map = Maps.newHashMap();
-          settlingMatcherMap.put(settlingMatcher, map);
-        }
-
-        String type = (String)row.get(aggTypeColumn);
-        Pair<Integer, Integer> value =
-            new Pair<>((int)Float.parseFloat((String)row.get(offsetColumn)), (int)Float.parseFloat((String)row.get(sizeColumn)));
-        map.put(type, value);
-      }
-
-      handle.close();
-
-      getSource = true;
-    }
   }
 }

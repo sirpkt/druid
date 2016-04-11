@@ -536,6 +536,7 @@ public class IndexGeneratorJob implements Jobby
     {
       config = HadoopDruidIndexerConfig.fromConfiguration(context.getConfiguration());
       settlingConfig = config.getSchema().getSettlingConfig();
+      settlingConfig.setUp();
 
       aggregators = config.getSchema().getDataSchema().getAggregators();
       combiningAggs = new AggregatorFactory[aggregators.length];

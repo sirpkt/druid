@@ -29,5 +29,7 @@ import io.druid.query.aggregation.AggregatorFactory;
     @JsonSubTypes.Type(name = "jdbc", value = HadoopSettlingConfig.class)
 })
 public interface SettlingConfig {
+  // setUp() should be called once before applySettling() calls
+  void setUp();
   void applySettling(InputRow row, AggregatorFactory[] org, AggregatorFactory[] applied);
 }
