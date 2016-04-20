@@ -39,6 +39,7 @@ import com.metamx.common.logger.Logger;
 import io.druid.common.guava.ThreadRenamingRunnable;
 import io.druid.concurrent.Execs;
 import io.druid.data.input.InputRow;
+import io.druid.data.input.MapBasedInputRow;
 import io.druid.data.input.Row;
 import io.druid.data.input.Rows;
 import io.druid.indexer.hadoop.SegmentInputRow;
@@ -48,6 +49,7 @@ import io.druid.segment.ProgressIndicator;
 import io.druid.segment.QueryableIndex;
 import io.druid.segment.incremental.IncrementalIndex;
 import io.druid.segment.incremental.IncrementalIndexSchema;
+import io.druid.segment.incremental.IndexSizeExceededException;
 import io.druid.segment.incremental.OnheapIncrementalIndex;
 import io.druid.timeline.DataSegment;
 import org.apache.commons.io.FileUtils;
@@ -624,17 +626,8 @@ public class IndexGeneratorJob implements Jobby
 
           if (prev.compareTo(key.getBytes(), 0, lengthSkipLastTS) != 0) {
             prev.set(key.getBytes(), 0, lengthSkipLastTS);
-            int numRows = 0;
-            if (settlingConfig != null) {
-              // adjust aggregator factory
-              settlingConfig.applySettling(rows.get(0), combiningAggs, rangedAggs);
-            }
-            for (InputRow row: rows)
-            {
-              numRows = index.add(row);
-
-              ++lineCount;
-            }
+            int numRows = addRows(index, rows);
+            lineCount += rows.size();
             rows.clear();
 
             if (!index.canAppendRow()) {
@@ -691,16 +684,8 @@ public class IndexGeneratorJob implements Jobby
           rows.add(inputRow);
         }
 
-        if (settlingConfig != null) {
-          // adjust aggregator factory
-          settlingConfig.applySettling(rows.get(0), combiningAggs, rangedAggs);
-        }
-        for (InputRow row: rows)
-        {
-          index.add(row);
-
-          ++lineCount;
-        }
+        addRows(index, rows);
+        lineCount += rows.size();
 
         allDimensionNames.addAll(index.getDimensionOrder());
 
@@ -791,6 +776,28 @@ public class IndexGeneratorJob implements Jobby
         }
       }
     }
+
+    private int addRows(IncrementalIndex index, List<InputRow> rows) throws IndexSizeExceededException
+    {
+      boolean settlingApplied = false;
+      int numRows = 0;
+      if (settlingConfig != null) {
+        // adjust aggregator factory
+        settlingApplied = settlingConfig.applySettling(rows.get(0), combiningAggs, rangedAggs);
+      }
+      for (InputRow row: rows)
+      {
+        if (settlingConfig != null) {
+          MapBasedInputRow mapBasedInputRow = (MapBasedInputRow)row;
+          mapBasedInputRow.getDimensions().add(settlingConfig.getSettlingYN());
+          mapBasedInputRow.getEvent().put(settlingConfig.getSettlingYN(), settlingApplied ? "Y" : "N");
+        }
+        numRows = index.add(row);
+      }
+
+      return numRows;
+    }
+
   }
 
   public static class IndexGeneratorOutputFormat extends TextOutputFormat

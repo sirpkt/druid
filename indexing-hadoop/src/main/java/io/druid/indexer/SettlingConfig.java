@@ -31,5 +31,6 @@ import io.druid.query.aggregation.AggregatorFactory;
 public interface SettlingConfig {
   // setUp() should be called once before applySettling() calls
   void setUp();
-  void applySettling(InputRow row, AggregatorFactory[] org, AggregatorFactory[] applied);
+  boolean applySettling(InputRow row, AggregatorFactory[] org, AggregatorFactory[] applied);
+  String getSettlingYN();
 }

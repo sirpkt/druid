@@ -44,6 +44,7 @@ import io.druid.query.aggregation.hyperloglog.HyperUniquesAggregatorFactory;
 import io.druid.segment.QueryableIndex;
 import io.druid.segment.QueryableIndexIndexableAdapter;
 import io.druid.segment.Rowboat;
+import io.druid.segment.data.Indexed;
 import io.druid.segment.indexing.DataSchema;
 import io.druid.segment.indexing.granularity.UniformGranularitySpec;
 import io.druid.timeline.DataSegment;
@@ -158,6 +159,8 @@ public class IndexGeneratorJobSettlingTest
   };
   private final String datasourceName = "website";
 
+  private final String settlingYNColumnName = "settling";
+
   private ObjectMapper mapper;
   private HadoopDruidIndexerConfig config;
   private File dataFile;
@@ -267,7 +270,8 @@ public class IndexGeneratorJobSettlingTest
                 regexColumns,
                 aggTypeColumn,
                 offsetColumn,
-                sizeColumn
+                sizeColumn,
+                settlingYNColumnName
             )
         )
     );
@@ -382,6 +386,10 @@ public class IndexGeneratorJobSettlingTest
 
         int count60 = 0;
         int count66 = 0;
+        int countY = 0;
+        int countN = 0;
+        Indexed<String> settling = adapter.getDimValueLookup(settlingYNColumnName);
+        int settlingIndex = adapter.getDimensionNames().indexOf(settlingYNColumnName);
         for (Rowboat row : adapter.getRows())
         {
           Long sum = (Long)row.getMetrics()[0];
@@ -390,9 +398,24 @@ public class IndexGeneratorJobSettlingTest
           } else if (sum == 66) {
             count66++;
           }
+
+          // check settling dimension generation
+          switch(settling.get(row.getDims()[settlingIndex][0]))
+          {
+            case "Y":
+              countY++;
+              break;
+            case "N":
+              countN++;
+              break;
+          }
         }
+
         Assert.assertTrue(count60 == 1);
         Assert.assertTrue(count66 == 2);
+
+        Assert.assertTrue(countY == 1);
+        Assert.assertTrue(countN == 2);
       }
     }
   }

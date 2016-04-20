@@ -50,6 +50,7 @@ public class HadoopSettlingConfigTest
   private String aggTypeColumn = "sum_type_cd";
   private String offsetColumn = "count_settling";
   private String sizeColumn = "count_activation";
+  private String settlingYNColumn = "settling";
   private String targetTable = "big_fdc_settling_info";
   private String condition = "count_settling > 0.0 and count_activation != -1.0";
 
@@ -71,7 +72,8 @@ public class HadoopSettlingConfigTest
         regexColumns,
         aggTypeColumn,
         offsetColumn,
-        sizeColumn
+        sizeColumn,
+        settlingYNColumn
     );
     settlingConfig.setUp();
   }

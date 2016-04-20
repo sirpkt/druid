@@ -44,12 +44,14 @@ public class HadoopSettlingConfig implements SettlingConfig
   final private String aggTypeColumn;
   final private String offsetColumn;
   final private String sizeColumn;
+  final private String settlingYN;
 
   private Map<MultiKey, Map<HadoopSettlingMatcher, Map<String, Pair<Integer, Integer>>>> settlingMap;
   private boolean getSource = false;
   private String[] dimValues;
   private String[] regexValues;
   private HadoopSettlingMatcherFactory matcherFactory;
+  protected String DEFAULT_SETTLING_YN = "settling";
 
   @JsonCreator
   public HadoopSettlingConfig(
@@ -66,7 +68,9 @@ public class HadoopSettlingConfig implements SettlingConfig
     @JsonProperty(value = "offsetColumn", required = true)
     final String offset,
     @JsonProperty(value = "sizeColumn", required = true)
-    final String size
+    final String size,
+    @JsonProperty(value = "settlingYNColumn")
+    final String settlingYN
   )
   {
     this.config = Preconditions.checkNotNull(connectorConfig);
@@ -76,6 +80,7 @@ public class HadoopSettlingConfig implements SettlingConfig
     this.aggTypeColumn = Preconditions.checkNotNull(aggTypeColumn);
     this.offsetColumn = Preconditions.checkNotNull(offset);
     this.sizeColumn = Preconditions.checkNotNull(size);
+    this.settlingYN = settlingYN == null ? DEFAULT_SETTLING_YN : settlingYN;
     settlingMap = Maps.newHashMap();
     dimValues = new String[constColumns.size()];
     regexValues = new String[regexColumns.size()];
@@ -122,6 +127,12 @@ public class HadoopSettlingConfig implements SettlingConfig
   public String getSizeColumn()
   {
     return sizeColumn;
+  }
+
+  @JsonProperty("settlingYNColumn")
+  public String getSettlingYN()
+  {
+    return settlingYN;
   }
 
   @Override
@@ -178,11 +189,12 @@ public class HadoopSettlingConfig implements SettlingConfig
   }
 
   @Override
-  public void applySettling(InputRow row, AggregatorFactory[] org, AggregatorFactory[] applied)
+  public boolean applySettling(InputRow row, AggregatorFactory[] org, AggregatorFactory[] applied)
   {
     Preconditions.checkArgument(getSource, "setUp() should be called before the applySettling()");
 
     Map<String, Pair<Integer, Integer>> mapForRow = getValueMap(row);
+    boolean settlingApplied = false;
 
     if (mapForRow != null)
     {
@@ -194,8 +206,10 @@ public class HadoopSettlingConfig implements SettlingConfig
         if (type != null) {
           Pair<Integer, Integer> aggRange = mapForRow.get(type);
           applied[idx] = new RangeAggregatorFactory(org[idx], aggRange.lhs, aggRange.rhs);
+          settlingApplied = true;
         } else if (mean != null) {
           applied[idx] = new RangeAggregatorFactory(org[idx], mean.lhs, mean.rhs);
+          settlingApplied = true;
         } else {
           applied[idx] = org[idx];
         }
@@ -206,16 +220,24 @@ public class HadoopSettlingConfig implements SettlingConfig
         applied[idx] = org[idx];
       }
     }
+
+    return settlingApplied;
   }
 
   private String getAggCode(AggregatorFactory aggregatorFactory)
   {
-    if (aggregatorFactory instanceof DoubleMinAggregatorFactory
-        || aggregatorFactory instanceof LongMinAggregatorFactory) {
-      return "MI";
-    } else if (aggregatorFactory instanceof DoubleMaxAggregatorFactory
-        || aggregatorFactory instanceof LongMaxAggregatorFactory) {
-      return "MA";
+    String className = aggregatorFactory.getClass().getSimpleName();
+
+    switch(className)
+    {
+      case "DoubleMinAggregatorFactory":
+      case "LongMinAggregatorFactory":
+        return "MI";
+      case "DoubleMaxAggregatorFactory":
+      case "LongMaxAggregatorFactory":
+        return "MA";
+      case "approxHistogram":
+        return "MD";
     }
 
     return null;
