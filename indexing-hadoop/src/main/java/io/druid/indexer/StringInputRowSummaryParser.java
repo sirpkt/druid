@@ -142,7 +142,7 @@ public class StringInputRowSummaryParser implements ByteBufferInputRowParser
   {
     Object dimensions = this.parseSpec.getDimensionsSpec().hasCustomDimensions()
                         ? this.parseSpec.getDimensionsSpec()
-                                        .getDimensions()
+                                        .getDimensionNames()
                         : Lists
                             .newArrayList(
                                 Sets.difference(
