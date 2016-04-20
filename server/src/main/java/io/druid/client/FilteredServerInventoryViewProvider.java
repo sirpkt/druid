@@ -17,39 +17,18 @@
  * under the License.
  */
 
-package io.druid.segment.filter;
+package io.druid.client;
 
-import com.metamx.collections.bitmap.ImmutableBitmap;
-import io.druid.query.filter.BitmapIndexSelector;
-import io.druid.query.filter.Filter;
-import io.druid.query.filter.ValueMatcher;
-import io.druid.query.filter.ValueMatcherFactory;
 
-/**
- */
-public class SelectorFilter implements Filter
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.google.inject.Provider;
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", defaultImpl = FilteredBatchServerInventoryViewProvider.class)
+@JsonSubTypes(value = {
+    @JsonSubTypes.Type(name = "legacy", value = FilteredSingleServerInventoryViewProvider.class),
+    @JsonSubTypes.Type(name = "batch", value = FilteredBatchServerInventoryViewProvider.class)
+})
+public interface FilteredServerInventoryViewProvider extends Provider<FilteredServerInventoryView>
 {
-  private final String dimension;
-  private final String value;
-
-  public SelectorFilter(
-      String dimension,
-      String value
-  )
-  {
-    this.dimension = dimension;
-    this.value = value;
-  }
-
-  @Override
-  public ImmutableBitmap getBitmapIndex(BitmapIndexSelector selector)
-  {
-    return selector.getBitmapIndex(dimension, value);
-  }
-
-  @Override
-  public ValueMatcher makeMatcher(ValueMatcherFactory factory)
-  {
-    return factory.makeValueMatcher(dimension, value);
-  }
 }
