@@ -238,6 +238,8 @@ public class HadoopSettlingConfig implements SettlingConfig
         return "MA";
       case "approxHistogram":
         return "MD";
+      case "rangeAgg":
+        return "RA";
     }
 
     return null;
