@@ -236,10 +236,14 @@ public class HadoopSettlingConfig implements SettlingConfig
       case "DoubleMaxAggregatorFactory":
       case "LongMaxAggregatorFactory":
         return "MA";
-      case "approxHistogram":
+      case "ApproximateHistogramFoldingAggregatorFactory":
         return "MD";
-      case "rangeAgg":
+      case "MetricRangeAggregatorFactory":
         return "RA";
+      case "MetricAreaAggregatorFactory":
+        return "AR";
+      case "VarianceAggregatorFactory":
+        return "ST";
     }
 
     return null;
