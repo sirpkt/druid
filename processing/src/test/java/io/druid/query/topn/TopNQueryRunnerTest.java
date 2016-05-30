@@ -1675,7 +1675,7 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Object, String>of(
                             "spot", "2spot0",
                             "total_market", "1total_market0",
                             "upfront", "3upfront0"
@@ -1740,7 +1740,7 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Object, String>of(
                             "spot", "2spot0",
                             "total_market", "1total_market0",
                             "upfront", "3upfront0"
@@ -1806,7 +1806,7 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Object, String>of(
                             "spot", "2spot0",
                             "total_market", "1total_market0",
                             "upfront", "3upfront0"
@@ -1871,7 +1871,7 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Object, String>of(
                             "spot",
                             "spot0",
                             "total_market",
@@ -1938,7 +1938,7 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Object, String>of(
                             "spot",
                             "2spot",
                             "total_market",
@@ -2005,7 +2005,7 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Object, String>of(
                             "spot",
                             "2spot",
                             "total_market",
@@ -2073,7 +2073,7 @@ public class TopNQueryRunnerTest
                 QueryRunnerTestHelper.marketDimension,
                 new LookupExtractionFn(
                     new MapLookupExtractor(
-                        ImmutableMap.of(
+                        ImmutableMap.<Object, String>of(
                             "spot",
                             "2spot",
                             "total_market",
@@ -3220,7 +3220,7 @@ public class TopNQueryRunnerTest
   @Test
   public void testTopNWithExtractionFilter()
   {
-    Map<String, String> extractionMap = new HashMap<>();
+    Map<Object, String> extractionMap = new HashMap<>();
     extractionMap.put("spot", "spot0");
     MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, false);
     LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true, false);
@@ -3269,7 +3269,7 @@ public class TopNQueryRunnerTest
   @Test
   public void testTopNWithExtractionFilterAndFilteredAggregatorCaseNoExistingValue()
   {
-    Map<String, String> extractionMap = new HashMap<>();
+    Map<Object, String> extractionMap = new HashMap<>();
     extractionMap.put("", "NULL");
 
     MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, false);
@@ -3338,7 +3338,7 @@ public class TopNQueryRunnerTest
   @Test
   public void testTopNWithExtractionFilterNoExistingValue()
   {
-    Map<String, String> extractionMap = new HashMap<>();
+    Map<Object, String> extractionMap = new HashMap<>();
     extractionMap.put("","NULL");
 
     MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, false);

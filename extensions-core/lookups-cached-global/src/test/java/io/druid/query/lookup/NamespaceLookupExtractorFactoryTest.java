@@ -224,7 +224,7 @@ public class NamespaceLookupExtractorFactoryTest
     )).andReturn(true).once();
     EasyMock.expect(cacheManager.getVersion(EasyMock.anyString())).andReturn("0").once();
     EasyMock.expect(cacheManager.getCacheMap(EasyMock.anyString()))
-            .andReturn(new ConcurrentHashMap<String, String>())
+            .andReturn(new ConcurrentHashMap<Object, String>())
             .once();
     EasyMock.expect(cacheManager.getVersion(EasyMock.anyString())).andReturn("0").once();
     EasyMock.expect(
@@ -262,7 +262,7 @@ public class NamespaceLookupExtractorFactoryTest
     )).andReturn(true).once();
     EasyMock.expect(cacheManager.getVersion(EasyMock.anyString())).andReturn("0").once();
     EasyMock.expect(cacheManager.getCacheMap(EasyMock.anyString()))
-            .andReturn(new ConcurrentHashMap<String, String>())
+            .andReturn(new ConcurrentHashMap<Object, String>())
             .once();
     EasyMock.expect(cacheManager.getVersion(EasyMock.anyString())).andReturn(null).once();
     EasyMock.expect(cacheManager.delete(EasyMock.anyString())).andReturn(true).once();
@@ -303,13 +303,13 @@ public class NamespaceLookupExtractorFactoryTest
     )).andReturn(true).once();
     EasyMock.expect(cacheManager.getVersion(EasyMock.anyString())).andReturn("0").once();
     EasyMock.expect(cacheManager.getCacheMap(EasyMock.anyString()))
-            .andReturn(new ConcurrentHashMap<String, String>(ImmutableMap.of("foo", "bar")))
+            .andReturn(new ConcurrentHashMap<Object, String>(ImmutableMap.of("foo", "bar")))
             .once();
     EasyMock.expect(cacheManager.getVersion(EasyMock.anyString())).andReturn("1").once();
 
     EasyMock.expect(cacheManager.getVersion(EasyMock.anyString())).andReturn("2").once();
     EasyMock.expect(cacheManager.getCacheMap(EasyMock.anyString()))
-            .andReturn(new ConcurrentHashMap<String, String>())
+            .andReturn(new ConcurrentHashMap<Object, String>())
             .once();
     EasyMock.expect(cacheManager.getVersion(EasyMock.anyString())).andReturn("2").once();
     EasyMock.expect(cacheManager.checkedDelete(EasyMock.anyString())).andReturn(true).once();

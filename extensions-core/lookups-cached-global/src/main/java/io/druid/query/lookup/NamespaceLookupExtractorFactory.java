@@ -141,7 +141,7 @@ public class NamespaceLookupExtractorFactory implements LookupExtractorFactory
         }
       }
 
-      private Map<String, String> getLatest()
+      private Map<Object, String> getLatest()
       {
         return ((MapLookupExtractor) get()).getMap();
       }
@@ -254,7 +254,7 @@ public class NamespaceLookupExtractorFactory implements LookupExtractorFactory
         throw new ISE("Factory [%s] not started", extractorID);
       }
       String preVersion = null, postVersion = null;
-      Map<String, String> map = null;
+      Map<Object, String> map = null;
       // Make sure we absolutely know what version of map we grabbed (for caching purposes)
       do {
         preVersion = manager.getVersion(extractorID);
