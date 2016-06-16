@@ -565,6 +565,13 @@ public class IndexGeneratorJobTest
     int segmentNum = 0;
     for (DateTime currTime = interval.getStart(); currTime.isBefore(interval.getEnd()); currTime = currTime.plusDays(1)) {
       Object[][] shardInfo = shardInfoForEachSegment[segmentNum++];
+      int max = JobHelper.getMaxSegmentPartitionNum(
+          new Path(config.getSchema().getIOConfig().getSegmentOutputPath()),
+          FileSystem.getLocal(new Configuration()),
+          config.getSchema().getDataSchema().getDataSource(),
+          new Interval(currTime.getMillis(), currTime.plusDays(1).getMillis()),
+          config.getSchema().getTuningConfig().getVersion()
+      );
       File segmentOutputFolder = new File(
           String.format(
               "%s/%s/%s_%s/%s",

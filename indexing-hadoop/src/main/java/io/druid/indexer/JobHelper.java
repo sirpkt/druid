@@ -38,10 +38,7 @@ import io.druid.segment.SegmentUtils;
 import io.druid.segment.loading.DataSegmentPusherUtil;
 import io.druid.timeline.DataSegment;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocalFileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.io.retry.RetryPolicies;
 import org.apache.hadoop.io.retry.RetryProxy;
 import org.apache.hadoop.mapreduce.Job;
@@ -49,6 +46,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.util.Progressable;
 import org.joda.time.DateTime;
+import org.joda.time.Interval;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -553,6 +551,48 @@ public class JobHelper
                         ? DataSegmentPusherUtil.getHdfsStorageDir(segment)
                         : DataSegmentPusherUtil.getStorageDir(segment);
     return new Path(prependFSIfNullScheme(fileSystem, basePath), String.format("./%s", segmentDir));
+  }
+
+  public static int getMaxSegmentPartitionNum(
+      Path basePath,
+      final FileSystem fileSystem,
+      String dataSource,
+      Interval interval,
+      String version
+  ) throws IOException
+  {
+    int max = -1;
+
+    DataSegment dummyForFindingPath = new DataSegment(
+        dataSource,
+        interval,
+        version,
+        null, null, null, null, 9, 0
+    );
+
+    Path targetPath = makeSegmentOutputPath(basePath, fileSystem, dummyForFindingPath).getParent();
+
+    if (!fileSystem.exists(targetPath)) {
+      return max;
+    }
+    FileStatus[] statuses = fileSystem.listStatus(targetPath, new PathFilter() {
+      @Override
+      public boolean accept(Path path) {
+        try {
+          return fileSystem.isDirectory(path);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+        return false;
+      }
+    });
+
+    for (FileStatus status: statuses) {
+      int partNum = Integer.parseInt(status.getPath().getName());
+      max = Math.max(max, partNum);
+    }
+
+    return max;
   }
 
   /**

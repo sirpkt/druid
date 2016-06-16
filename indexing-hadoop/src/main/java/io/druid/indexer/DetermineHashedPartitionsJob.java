@@ -36,6 +36,7 @@ import io.druid.granularity.QueryGranularity;
 import io.druid.query.aggregation.hyperloglog.HyperLogLogCollector;
 import io.druid.segment.indexing.granularity.UniformGranularitySpec;
 import io.druid.timeline.partition.HashBasedNumberedShardSpec;
+import io.druid.timeline.partition.LinearShardSpec;
 import io.druid.timeline.partition.NoneShardSpec;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
@@ -169,15 +170,24 @@ public class DetermineHashedPartitionsJob implements Jobby
 
           log.info("Creating [%,d] shards", numberOfShards);
 
+          int appendOffset = config.isAppend() ?
+              JobHelper.getMaxSegmentPartitionNum(
+                  new Path(config.getSchema().getIOConfig().getSegmentOutputPath()),
+                  fileSystem,
+                  config.getDataSource(),
+                  segmentGranularity,
+                  config.getSchema().getTuningConfig().getVersion()
+              ) + 1
+              : 0;
           List<HadoopyShardSpec> actualSpecs = Lists.newArrayListWithExpectedSize(numberOfShards);
           if (numberOfShards == 1) {
-            actualSpecs.add(new HadoopyShardSpec(new NoneShardSpec(), shardCount++));
+            actualSpecs.add(new HadoopyShardSpec(new LinearShardSpec(appendOffset), shardCount++));
           } else {
             for (int i = 0; i < numberOfShards; ++i) {
               actualSpecs.add(
                   new HadoopyShardSpec(
                       new HashBasedNumberedShardSpec(
-                          i,
+                          i + appendOffset,
                           numberOfShards,
                           null,
                           HadoopDruidIndexerConfig.JSON_MAPPER

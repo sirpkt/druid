@@ -363,6 +363,17 @@ public class HadoopDruidIndexerConfig
     return schema.getTuningConfig().getBuildV9Directly();
   }
 
+  public boolean isAppend()
+  {
+    Map<String, String> properties = schema.getTuningConfig().getJobProperties();
+
+    if (!properties.containsKey("append")) {
+      return false;
+    }
+
+    return "true".equalsIgnoreCase(properties.get("append"));
+  }
+
   /**
    * Job instance should have Configuration set (by calling {@link #addJobProperties(Job)}
    * or via injected system properties) before this method is called.  The {@link PathSpec} may
