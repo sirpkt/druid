@@ -32,19 +32,29 @@ public class LockAcquireAction implements TaskAction<TaskLock>
 {
   @JsonIgnore
   private final Interval interval;
+  @JsonIgnore
+  private final String version;
 
   @JsonCreator
   public LockAcquireAction(
-      @JsonProperty("interval") Interval interval
+      @JsonProperty("interval") Interval interval,
+      @JsonProperty("version") String version
   )
   {
     this.interval = interval;
+    this.version = version;
   }
 
   @JsonProperty
   public Interval getInterval()
   {
     return interval;
+  }
+
+  @JsonProperty
+  public String getVersion()
+  {
+    return version;
   }
 
   public TypeReference<TaskLock> getReturnTypeReference()
@@ -58,7 +68,7 @@ public class LockAcquireAction implements TaskAction<TaskLock>
   public TaskLock perform(Task task, TaskActionToolbox toolbox)
   {
     try {
-      return toolbox.getTaskLockbox().lock(task, interval);
+      return toolbox.getTaskLockbox().lock(task, interval, version);
     }
     catch (InterruptedException e) {
       throw Throwables.propagate(e);
@@ -76,6 +86,7 @@ public class LockAcquireAction implements TaskAction<TaskLock>
   {
     return "LockAcquireAction{" +
            "interval=" + interval +
+           ",version=" + version +
            '}';
   }
 }

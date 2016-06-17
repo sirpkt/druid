@@ -192,6 +192,32 @@ public class TaskLockbox
   }
 
   /**
+   * Acquires a lock on behalf of a task with version. Blocks until the lock is acquired. Throws an exception if the lock
+   * cannot be acquired.
+   *
+   * @param task task to acquire lock for
+   * @param interval interval to lock
+   * @param version version to lock
+   * @return acquired TaskLock
+   *
+   * @throws java.lang.InterruptedException if the lock cannot be acquired
+   */
+  public TaskLock lock(final Task task, final Interval interval, final String version) throws InterruptedException
+  {
+    giant.lock();
+    try {
+      Optional<TaskLock> taskLock;
+      while (!(taskLock = tryLock(task, interval, (version == null) ? Optional.<String>absent() : Optional.of(version))).isPresent()) {
+        lockReleaseCondition.await();
+      }
+
+      return taskLock.get();
+    } finally {
+      giant.unlock();
+    }
+  }
+
+  /**
    * Attempt to lock a task, without removing it from the queue. Equivalent to the long form of {@code tryLock}
    * with no preferred version.
    *
@@ -220,7 +246,7 @@ public class TaskLockbox
    * @return lock version if lock was acquired, absent otherwise
    * @throws IllegalStateException if the task is not a valid active task
    */
-  private Optional<TaskLock> tryLock(final Task task, final Interval interval, final Optional<String> preferredVersion)
+  public Optional<TaskLock> tryLock(final Task task, final Interval interval, final Optional<String> preferredVersion)
   {
     giant.lock();
 

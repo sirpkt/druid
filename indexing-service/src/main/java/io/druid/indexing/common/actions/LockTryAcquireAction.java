@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.base.Optional;
 import io.druid.indexing.common.TaskLock;
 import io.druid.indexing.common.task.Task;
 import org.joda.time.Interval;
@@ -31,19 +32,29 @@ public class LockTryAcquireAction implements TaskAction<TaskLock>
 {
   @JsonIgnore
   private final Interval interval;
+  @JsonIgnore
+  private final String version;
 
   @JsonCreator
   public LockTryAcquireAction(
-      @JsonProperty("interval") Interval interval
+      @JsonProperty("interval") Interval interval,
+      @JsonProperty("version") String version
   )
   {
     this.interval = interval;
+    this.version = version;
   }
 
   @JsonProperty
   public Interval getInterval()
   {
     return interval;
+  }
+
+  @JsonProperty
+  public String getVersion()
+  {
+    return version;
   }
 
   public TypeReference<TaskLock> getReturnTypeReference()
@@ -56,7 +67,7 @@ public class LockTryAcquireAction implements TaskAction<TaskLock>
   @Override
   public TaskLock perform(Task task, TaskActionToolbox toolbox)
   {
-    return toolbox.getTaskLockbox().tryLock(task, interval).orNull();
+    return toolbox.getTaskLockbox().tryLock(task, interval, (version == null) ? Optional.<String>absent() : Optional.of(version)).orNull();
   }
 
   @Override
@@ -70,6 +81,7 @@ public class LockTryAcquireAction implements TaskAction<TaskLock>
   {
     return "LockTryAcquireAction{" +
            "interval=" + interval +
+           ",version=" + version +
            '}';
   }
 }

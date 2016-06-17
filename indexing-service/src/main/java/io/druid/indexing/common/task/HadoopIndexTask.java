@@ -134,7 +134,7 @@ public class HadoopIndexTask extends HadoopTask
               intervals.get()
           )
       );
-      return taskActionClient.submit(new LockTryAcquireAction(interval)) != null;
+      return taskActionClient.submit(new LockTryAcquireAction(interval, spec.getTuningConfig().getVersion())) != null;
     } else {
       return true;
     }
@@ -195,7 +195,7 @@ public class HadoopIndexTask extends HadoopTask
               indexerSchema.getDataSchema().getGranularitySpec().bucketIntervals().get()
           )
       );
-      TaskLock lock = toolbox.getTaskActionClient().submit(new LockAcquireAction(interval));
+      TaskLock lock = toolbox.getTaskActionClient().submit(new LockAcquireAction(interval, indexerSchema.getTuningConfig().getVersion()));
       version = lock.getVersion();
     } else {
       Iterable<TaskLock> locks = getTaskLocks(toolbox);

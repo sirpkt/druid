@@ -207,7 +207,7 @@ public class RealtimeIndexTask extends AbstractTask
       public void announceSegment(final DataSegment segment) throws IOException
       {
         // Side effect: Calling announceSegment causes a lock to be acquired
-        toolbox.getTaskActionClient().submit(new LockAcquireAction(segment.getInterval()));
+        toolbox.getTaskActionClient().submit(new LockAcquireAction(segment.getInterval(), null));
         toolbox.getSegmentAnnouncer().announceSegment(segment);
       }
 
@@ -227,7 +227,7 @@ public class RealtimeIndexTask extends AbstractTask
       {
         // Side effect: Calling announceSegments causes locks to be acquired
         for (DataSegment segment : segments) {
-          toolbox.getTaskActionClient().submit(new LockAcquireAction(segment.getInterval()));
+          toolbox.getTaskActionClient().submit(new LockAcquireAction(segment.getInterval(), null));
         }
         toolbox.getSegmentAnnouncer().announceSegments(segments);
       }
@@ -266,7 +266,7 @@ public class RealtimeIndexTask extends AbstractTask
         try {
           // Side effect: Calling getVersion causes a lock to be acquired
           final TaskLock myLock = toolbox.getTaskActionClient()
-                                         .submit(new LockAcquireAction(interval));
+                                         .submit(new LockAcquireAction(interval, null));
 
           return myLock.getVersion();
         }
