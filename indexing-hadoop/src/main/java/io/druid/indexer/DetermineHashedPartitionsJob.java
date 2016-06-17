@@ -186,12 +186,7 @@ public class DetermineHashedPartitionsJob implements Jobby
             for (int i = 0; i < numberOfShards; ++i) {
               actualSpecs.add(
                   new HadoopyShardSpec(
-                      new HashBasedNumberedShardSpec(
-                          i + appendOffset,
-                          numberOfShards,
-                          null,
-                          HadoopDruidIndexerConfig.JSON_MAPPER
-                      ),
+                      new LinearShardSpec(i + appendOffset),
                       shardCount++
                   )
               );

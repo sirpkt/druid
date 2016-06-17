@@ -37,6 +37,7 @@ import com.google.inject.Binder;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Module;
+import com.ibm.icu.impl.Assert;
 import com.metamx.common.guava.FunctionalIterable;
 import com.metamx.common.logger.Logger;
 import io.druid.common.utils.JodaUtils;
@@ -355,7 +356,15 @@ public class HadoopDruidIndexerConfig
 
   public HadoopyShardSpec getShardSpec(Bucket bucket)
   {
-    return schema.getTuningConfig().getShardSpecs().get(bucket.time).get(bucket.partitionNum);
+    List<HadoopyShardSpec> shardSpecList = schema.getTuningConfig().getShardSpecs().get(bucket.time);
+    for (HadoopyShardSpec shardSpec: shardSpecList) {
+      if (shardSpec.getActualSpec().getPartitionNum() == bucket.partitionNum) {
+        return shardSpec;
+      }
+    }
+    // should not reach hear
+    Assert.assrt(String.format("No matching shard spec for bucket[%s]", bucket), false);
+    return null;
   }
 
   public boolean isBuildV9Directly()
