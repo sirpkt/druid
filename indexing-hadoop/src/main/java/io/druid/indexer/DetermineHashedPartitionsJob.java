@@ -181,12 +181,25 @@ public class DetermineHashedPartitionsJob implements Jobby
               : 0;
           List<HadoopyShardSpec> actualSpecs = Lists.newArrayListWithExpectedSize(numberOfShards);
           if (numberOfShards == 1) {
-            actualSpecs.add(new HadoopyShardSpec(new LinearShardSpec(appendOffset), shardCount++));
+            actualSpecs.add(new HadoopyShardSpec(
+                new HashBasedNumberedShardSpec(
+                    appendOffset,
+                    1,
+                    null,
+                    HadoopDruidIndexerConfig.JSON_MAPPER
+                ),
+                shardCount++)
+            );
           } else {
             for (int i = 0; i < numberOfShards; ++i) {
               actualSpecs.add(
                   new HadoopyShardSpec(
-                      new LinearShardSpec(i + appendOffset),
+                      new HashBasedNumberedShardSpec(
+                          i + appendOffset,
+                          numberOfShards,
+                          null,
+                          HadoopDruidIndexerConfig.JSON_MAPPER
+                      ),
                       shardCount++
                   )
               );
