@@ -22,6 +22,7 @@ package io.druid.query.extraction;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.druid.query.lookup.LookupExtractionFn;
+import io.druid.query.lookup.MultiDimLookupExtractionFn;
 import io.druid.query.lookup.RegisteredLookupExtractionFn;
 
 /**
@@ -42,6 +43,7 @@ import io.druid.query.lookup.RegisteredLookupExtractionFn;
     @JsonSubTypes.Type(name = "stringFormat", value = StringFormatExtractionFn.class),
     @JsonSubTypes.Type(name = "upper", value = UpperExtractionFn.class),
     @JsonSubTypes.Type(name = "lower", value = LowerExtractionFn.class),
+    @JsonSubTypes.Type(name = "multilookup", value = MultiDimLookupExtractionFn.class),
     @JsonSubTypes.Type(name = "bucket", value = BucketExtractionFn.class)
 })
 /**
@@ -123,4 +125,10 @@ public interface ExtractionFn
   {
     MANY_TO_ONE, ONE_TO_ONE
   }
+
+  /**
+   * Number of input dimensions for the extraction function. Some extraction function may take multiple dimensions as inputs
+   * @return number of input dimensions
+   */
+  public int numberOfDimensionInputs();
 }

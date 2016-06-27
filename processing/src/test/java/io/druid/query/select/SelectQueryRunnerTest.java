@@ -20,11 +20,7 @@
 package io.druid.query.select;
 
 import com.google.common.base.Function;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.ObjectArrays;
+import com.google.common.collect.*;
 import com.metamx.common.ISE;
 import com.metamx.common.guava.Sequences;
 import io.druid.jackson.DefaultObjectMapper;
@@ -206,7 +202,7 @@ public class SelectQueryRunnerTest
   @Test
   public void testFullOnSelectWithDimensionSpec()
   {
-    Map<String, String> map = new HashMap<>();
+    Map<Object, String> map = new HashMap<>();
     map.put("automotive", "automotive0");
     map.put("business", "business0");
     map.put("entertainment", "entertainment0");
@@ -460,7 +456,7 @@ public class SelectQueryRunnerTest
   @Test
   public void testSelectWithFilterLookupExtractionFn () {
 
-    Map<String, String> extractionMap = new HashMap<>();
+    Map<Object, String> extractionMap = new HashMap<>();
     extractionMap.put("total_market","replaced");
     MapLookupExtractor mapLookupExtractor = new MapLookupExtractor(extractionMap, false);
     LookupExtractionFn lookupExtractionFn = new LookupExtractionFn(mapLookupExtractor, false, null, true, true);

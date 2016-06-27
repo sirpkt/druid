@@ -22,9 +22,7 @@ package io.druid.segment.incremental;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterators;
-import com.google.common.collect.Lists;
+import com.google.common.collect.*;
 import com.google.common.primitives.Ints;
 import com.metamx.common.guava.Sequence;
 import com.metamx.common.guava.Sequences;
@@ -328,111 +326,275 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                   DimensionSpec dimensionSpec
               )
               {
-                final String dimension = dimensionSpec.getDimension();
+                final List<String> dimensions = dimensionSpec.getDimensions();
                 final ExtractionFn extractionFn = dimensionSpec.getExtractionFn();
 
-                if (dimension.equals(Column.TIME_COLUMN_NAME)) {
-                  return new SingleScanTimeDimSelector(makeLongColumnSelector(dimension), extractionFn, descending);
-                }
-
-                final IncrementalIndex.DimensionDesc dimensionDesc = index.getDimension(dimension);
-                if (dimensionDesc == null) {
-                  return NULL_DIMENSION_SELECTOR;
-                }
-
-                final int dimIndex = dimensionDesc.getIndex();
-                final IncrementalIndex.DimDim dimValLookup = dimensionDesc.getValues();
-
-                final int maxId = dimValLookup.size();
-
-                return new DimensionSelector()
+                if (dimensions.size() == 1)
                 {
-                  @Override
-                  public IndexedInts getRow()
+                  String dimension = dimensions.get(0);
+
+                  if (dimension.equals(Column.TIME_COLUMN_NAME)) {
+                    return new SingleScanTimeDimSelector(makeLongColumnSelector(dimension), extractionFn, descending);
+                  }
+
+                  final IncrementalIndex.DimensionDesc dimensionDesc = index.getDimension(dimension);
+                  if (dimensionDesc == null) {
+                    return NULL_DIMENSION_SELECTOR;
+                  }
+
+                  final int dimIndex = dimensionDesc.getIndex();
+                  final IncrementalIndex.DimDim dimValLookup = dimensionDesc.getValues();
+
+                  final int maxId = dimValLookup.size();
+
+                  return new DimensionSelector()
                   {
-                    final int[][] dims = currEntry.getKey().getDims();
+                    @Override
+                    public IndexedInts getRow()
+                    {
+                      final int[][] dims = currEntry.getKey().getDims();
 
-                    int[] indices = dimIndex < dims.length ? dims[dimIndex] : null;
+                      int[] indices = dimIndex < dims.length ? dims[dimIndex] : null;
 
-                    List<Integer> valsTmp = null;
-                    if ((indices == null || indices.length == 0) && dimValLookup.contains(null)) {
-                      int id = dimValLookup.getId(null);
-                      if (id < maxId) {
-                        valsTmp = new ArrayList<>(1);
-                        valsTmp.add(id);
-                      }
-                    } else if (indices != null && indices.length > 0) {
-                      valsTmp = new ArrayList<>(indices.length);
-                      for (int i = 0; i < indices.length; i++) {
-                        int id = indices[i];
+                      List<Integer> valsTmp = null;
+                      if ((indices == null || indices.length == 0) && dimValLookup.contains(null)) {
+                        int id = dimValLookup.getId(null);
                         if (id < maxId) {
+                          valsTmp = new ArrayList<>(1);
                           valsTmp.add(id);
                         }
+                      } else if (indices != null && indices.length > 0) {
+                        valsTmp = new ArrayList<>(indices.length);
+                        for (int i = 0; i < indices.length; i++) {
+                          int id = indices[i];
+                          if (id < maxId) {
+                            valsTmp.add(id);
+                          }
+                        }
                       }
+
+                      final List<Integer> vals = valsTmp == null ? Collections.EMPTY_LIST : valsTmp;
+                      return new IndexedInts()
+                      {
+                        @Override
+                        public int size()
+                        {
+                          return vals.size();
+                        }
+
+                        @Override
+                        public int get(int index)
+                        {
+                          return vals.get(index);
+                        }
+
+                        @Override
+                        public Iterator<Integer> iterator()
+                        {
+                          return vals.iterator();
+                        }
+
+                        @Override
+                        public void fill(int index, int[] toFill)
+                        {
+                          throw new UnsupportedOperationException("fill not supported");
+                        }
+
+                        @Override
+                        public void close() throws IOException
+                        {
+
+                        }
+                      };
                     }
 
-                    final List<Integer> vals = valsTmp == null ? Collections.EMPTY_LIST : valsTmp;
-                    return new IndexedInts()
+                    @Override
+                    public int getValueCardinality()
                     {
-                      @Override
-                      public int size()
-                      {
-                        return vals.size();
-                      }
+                      return maxId;
+                    }
 
-                      @Override
-                      public int get(int index)
-                      {
-                        return vals.get(index);
-                      }
+                    @Override
+                    public String lookupName(int id)
+                    {
+                      // TODO: needs update to DimensionSelector interface to allow multi-types, just use Strings for now
+                      final Comparable value = dimValLookup.getValue(id);
+                      final String strValue = value == null ? null : value.toString();
+                      return extractionFn == null ? strValue : extractionFn.apply(strValue);
 
-                      @Override
-                      public Iterator<Integer> iterator()
-                      {
-                        return vals.iterator();
-                      }
+                    }
 
-                      @Override
-                      public void fill(int index, int[] toFill)
-                      {
-                        throw new UnsupportedOperationException("fill not supported");
+                    @Override
+                    public int lookupId(String name)
+                    {
+                      if (extractionFn != null) {
+                        throw new UnsupportedOperationException(
+                            "cannot perform lookup when applying an extraction function"
+                        );
                       }
-
-                      @Override
-                      public void close() throws IOException
-                      {
-
-                      }
-                    };
+                      return dimValLookup.getId(name);
+                    }
+                  };
+                } else {
+                  if (extractionFn == null || extractionFn.numberOfDimensionInputs() != dimensions.size())
+                  {
+                    throw new UnsupportedOperationException(
+                        "number of dimensions between extractionFn() and input dimensions mismatch!"
+                    );
                   }
 
-                  @Override
-                  public int getValueCardinality()
+                  final IncrementalIndex.DimensionDesc[] dimensionDescs = new IncrementalIndex.DimensionDesc[dimensions.size()];
+                  final IncrementalIndex.DimDim[] dimValLookups = new IncrementalIndex.DimDim[dimensions.size()];
+
+                  int cardinality = 1;
+
+                  for (int idx = 0; idx < dimensions.size(); idx++)
                   {
-                    return maxId;
+                    String dimension = dimensions.get(idx);
+                    dimensionDescs[idx] = index.getDimension(dimension);
+
+                    if (dimensionDescs[idx] != null)
+                    {
+                      dimValLookups[idx] = dimensionDescs[idx].getValues();
+                      cardinality *= dimValLookups[idx].size();
+                    }
                   }
 
-                  @Override
-                  public String lookupName(int id)
-                  {
-                    // TODO: needs update to DimensionSelector interface to allow multi-types, just use Strings for now
-                    final Comparable value = dimValLookup.getValue(id);
-                    final String strValue = value == null ? null : value.toString();
-                    return extractionFn == null ? strValue : extractionFn.apply(strValue);
+                  final int cardinalityEstimate = cardinality;
 
-                  }
-
-                  @Override
-                  public int lookupId(String name)
+                  return new DimensionSelector()
                   {
-                    if (extractionFn != null) {
+                    boolean valMade = false;
+                    EntryHolder current = null;
+                    List<Integer> vals = null;
+                    List<String> dimsExtractValues = Lists.newArrayList();
+                    Map<String, Integer> dimsExtractLookup = Maps.newHashMap();
+
+                    @Override
+                    public IndexedInts getRow()
+                    {
+
+                      return new IndexedInts()
+                      {
+                        @Override
+                        public int size()
+                        {
+                          fillValues();
+                          return vals.size();
+                        }
+
+                        @Override
+                        public int get(int index)
+                        {
+                          fillValues();
+                          return vals.get(index);
+                        }
+
+                        @Override
+                        public Iterator<Integer> iterator()
+                        {
+                          fillValues();
+                          return vals.iterator();
+                        }
+
+                        @Override
+                        public void fill(int index, int[] toFill)
+                        {
+                          throw new UnsupportedOperationException("fill not supported");
+                        }
+
+                        @Override
+                        public void close() throws IOException
+                        {
+
+                        }
+                      };
+                    }
+
+                    @Override
+                    public int getValueCardinality()
+                    {
+                      return cardinalityEstimate;
+                    }
+
+                    @Override
+                    public String lookupName(int id)
+                    {
+                      fillValues();
+                      return dimsExtractValues.get(id);
+                    }
+
+                    @Override
+                    public int lookupId(String name)
+                    {
                       throw new UnsupportedOperationException(
                           "cannot perform lookup when applying an extraction function"
                       );
                     }
-                    return dimValLookup.getId(name);
-                  }
-                };
+
+                    private synchronized void fillValues()
+                    {
+                      if (!valMade || current != currEntry)
+                      {
+                        final int[][] dims = currEntry.getKey().getDims();
+                        List<Set<Comparable>> dimValues = Lists.newArrayListWithCapacity(dimensions.size());
+
+                        Set<Comparable> nullSet = Sets.newHashSetWithExpectedSize(1);
+                        nullSet.add(null);
+
+                        for (int idx = 0; idx < dimensions.size(); idx++)
+                        {
+                          Set<Comparable> valuesTmp = nullSet;
+
+                          if (dimensionDescs[idx] != null) {
+                            int dimIndex = dimensionDescs[idx].getIndex();
+
+                            int[] indices = dimIndex < dims.length ? dims[dimIndex] : null;
+
+                            if ((indices == null || indices.length == 0) && dimValLookups[idx].contains(null)) {
+                              int id = dimValLookups[idx].getId(null);
+                              if (id < dimValLookups[idx].size()) {
+                                valuesTmp = Sets.newHashSetWithExpectedSize(1);
+                                valuesTmp.add(id);
+                              }
+                            } else if (indices != null && indices.length > 0) {
+                              valuesTmp = Sets.newHashSetWithExpectedSize(indices.length);
+                              for (int i = 0; i < indices.length; i++) {
+                                int id = indices[i];
+                                if (id < dimValLookups[idx].size()) {
+                                  valuesTmp.add(dimValLookups[idx].getValue(id));
+                                }
+                              }
+                            }
+                          }
+                          dimValues.add(valuesTmp);
+                        }
+
+                        Set<List<Comparable>> args = Sets.cartesianProduct(dimValues);
+                        List<Integer> valsTmp = Lists.newArrayListWithCapacity(args.size());
+
+                        final List<String> dimsExtractValues = Lists.newArrayListWithCapacity(args.size());
+                        for (List<Comparable> arg: args)
+                        {
+                          String fnReturn = extractionFn.apply(arg);
+                          Integer index = dimsExtractLookup.get(fnReturn);
+                          if (index == null) {
+                            dimsExtractLookup.put(fnReturn, dimsExtractValues.size());
+                            valsTmp.add(dimsExtractValues.size());
+                            dimsExtractValues.add(fnReturn);
+                          } else {
+                            valsTmp.add(index);
+                          }
+                        }
+
+                        vals = valsTmp == null ? Collections.EMPTY_LIST : valsTmp;
+
+                        valMade = true;
+                        current = currEntry;
+                      }
+                    }
+                  };
+                }
               }
 
               @Override
