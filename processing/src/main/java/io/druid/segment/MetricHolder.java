@@ -25,16 +25,7 @@ import com.google.common.io.OutputSupplier;
 import com.metamx.common.IAE;
 import com.metamx.common.ISE;
 import io.druid.common.utils.SerializerUtils;
-import io.druid.segment.data.CompressedFloatsIndexedSupplier;
-import io.druid.segment.data.CompressedFloatsSupplierSerializer;
-import io.druid.segment.data.CompressedLongsIndexedSupplier;
-import io.druid.segment.data.CompressedLongsSupplierSerializer;
-import io.druid.segment.data.GenericIndexed;
-import io.druid.segment.data.GenericIndexedWriter;
-import io.druid.segment.data.Indexed;
-import io.druid.segment.data.IndexedFloats;
-import io.druid.segment.data.IndexedLongs;
-import io.druid.segment.data.ObjectStrategy;
+import io.druid.segment.data.*;
 import io.druid.segment.serde.ComplexMetricSerde;
 import io.druid.segment.serde.ComplexMetrics;
 
@@ -80,6 +71,16 @@ public class MetricHolder
         ByteStreams.copy(in, out);
       }
     }
+  }
+
+  public static void writeFixedSizeComplexMetric(
+      OutputSupplier<? extends OutputStream> outSupplier, String name, String typeName, CompressedFixedSizeObjectSupplierSerializer column
+  ) throws IOException
+  {
+    ByteStreams.write(version, outSupplier);
+    serializerUtils.writeString(outSupplier, name);
+    serializerUtils.writeString(outSupplier, typeName);
+    column.closeAndConsolidate(outSupplier);
   }
 
   public static void writeFloatMetric(

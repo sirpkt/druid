@@ -33,6 +33,15 @@ public abstract class ComplexMetricSerde
   public abstract ComplexMetricExtractor getExtractor();
 
   /**
+   * Returns size of metricObject if it is fixed size
+   * @return
+   */
+  public Integer getMetricSize()
+  {
+    return null;
+  }
+
+  /**
    * Deserializes a ByteBuffer and adds it to the ColumnBuilder.  This method allows for the ComplexMetricSerde
    * to implement it's own versioning scheme to allow for changes of binary format in a forward-compatible manner.
    *
