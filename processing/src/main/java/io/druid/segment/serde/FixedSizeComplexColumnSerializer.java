@@ -36,6 +36,15 @@ import java.nio.channels.WritableByteChannel;
 
 public class FixedSizeComplexColumnSerializer implements GenericColumnSerializer
 {
+  public static FixedSizeComplexColumnSerializer create(
+      IOPeon ioPeon,
+      String filenameBase,
+      CompressedObjectStrategy.CompressionStrategy compression,
+      ComplexMetricSerde serde
+  )
+  {
+    return new FixedSizeComplexColumnSerializer(ioPeon, filenameBase, IndexIO.BYTE_ORDER, compression, serde);
+  }
   private final IOPeon ioPeon;
   private final String filenameBase;
   private final ByteOrder byteOrder;
@@ -83,7 +92,7 @@ public class FixedSizeComplexColumnSerializer implements GenericColumnSerializer
   @Override
   public long getSerializedSize()
   {
-    return 0;
+    return writer.getSerializedSize();
   }
 
   @Override

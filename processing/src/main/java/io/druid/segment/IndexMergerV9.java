@@ -63,13 +63,7 @@ import io.druid.segment.data.IndexedRTree;
 import io.druid.segment.data.TmpFileIOPeon;
 import io.druid.segment.data.VSizeIndexedIntsWriter;
 import io.druid.segment.data.VSizeIndexedWriter;
-import io.druid.segment.serde.ComplexColumnPartSerde;
-import io.druid.segment.serde.ComplexColumnSerializer;
-import io.druid.segment.serde.ComplexMetricSerde;
-import io.druid.segment.serde.ComplexMetrics;
-import io.druid.segment.serde.DictionaryEncodedColumnPartSerde;
-import io.druid.segment.serde.FloatGenericColumnPartSerde;
-import io.druid.segment.serde.LongGenericColumnPartSerde;
+import io.druid.segment.serde.*;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
@@ -759,7 +753,8 @@ public class IndexMergerV9 extends IndexMerger
           if (serde == null) {
             throw new ISE("Unknown type[%s]", typeName);
           }
-          writer = ComplexColumnSerializer.create(ioPeon, metric, serde);
+          writer = (serde.getMetricSize() == null) ? ComplexColumnSerializer.create(ioPeon, metric, serde)
+              : FixedSizeComplexColumnSerializer.create(ioPeon, metric, metCompression, serde);
           break;
         default:
           throw new ISE("Unknown type[%s]", type);

@@ -129,11 +129,20 @@ public class CompressedFixedSizeObjectSupplierSerializer
     flattener.close();
   }
 
+  public long getSerializedSize()
+  {
+    return 1 +              // version
+        Ints.BYTES +     // elements num
+        Ints.BYTES +     // metric size
+        1 +              // compression id
+        flattener.getSerializedSize();
+  }
+
   public void writeToChannel(WritableByteChannel channel) throws IOException
   {
     channel.write(ByteBuffer.wrap(new byte[]{CompressedFloatsIndexedSupplier.version}));
     channel.write(ByteBuffer.wrap(Ints.toByteArray(numInserted)));
-    channel.write(ByteBuffer.wrap(Ints.toByteArray(sizePer)));
+    channel.write(ByteBuffer.wrap(Ints.toByteArray(serde.getMetricSize())));
     channel.write(ByteBuffer.wrap(new byte[]{compression.getId()}));
     final ReadableByteChannel from = Channels.newChannel(flattener.combineStreams().getInput());
     ByteStreams.copy(from, channel);
