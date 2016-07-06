@@ -435,7 +435,8 @@ public class IndexMergerV9 extends IndexMerger
           builder.setValueType(ValueType.COMPLEX);
           builder.addSerde(
               ComplexColumnPartSerde.serializerBuilder().withTypeName(typeName)
-                                    .withDelegate((ComplexColumnSerializer) writer)
+                                    .withByteOrder(IndexIO.BYTE_ORDER)
+                                    .withDelegate(writer)
                                     .build()
           );
           break;

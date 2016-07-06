@@ -20,23 +20,21 @@
 package io.druid.segment.data;
 
 import com.google.common.base.Supplier;
-import com.google.common.io.ByteStreams;
 import com.google.common.io.Closeables;
 import com.google.common.primitives.Ints;
 import com.metamx.common.IAE;
 import com.metamx.common.guava.CloseQuietly;
 import io.druid.collections.ResourceHolder;
+import io.druid.segment.CompressedPools;
+import io.druid.segment.column.ComplexColumn;
 import io.druid.segment.serde.ComplexMetricSerde;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.LongBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
-public class CompressedFixedSizeComplexesIndexedSupplier implements Supplier<IndexedFixedSizeComplex>
+public class CompressedFixedSizeComplexesIndexedSupplier implements Supplier<ComplexColumn>
 {
   public static final byte LZF_VERSION = 0x1;
   public static final byte version = 0x2;
@@ -66,10 +64,15 @@ public class CompressedFixedSizeComplexesIndexedSupplier implements Supplier<Ind
     return totalSize;
   }
 
-  @Override
-  public IndexedFixedSizeComplex get()
+  public static int getMaxObjectsInBuffer(int objectSize)
   {
-    return null;
+    return CompressedPools.BUFFER_SIZE / objectSize;
+  }
+
+  @Override
+  public ComplexColumn get()
+  {
+    return new CompressedIndexedFixedSizeComplexes();
   }
 
   public long getSerializedSize()
@@ -126,7 +129,7 @@ public class CompressedFixedSizeComplexesIndexedSupplier implements Supplier<Ind
     throw new IAE("Unknown version[%s]", versionFromBuffer);
   }
 
-  private class CompressedIndexedFixedSizeComplexes implements IndexedFixedSizeComplex
+  private class CompressedIndexedFixedSizeComplexes implements ComplexColumn
   {
     final Indexed<ResourceHolder<ByteBuffer>> singleThreadedLongBuffers = baseBuffers.singleThreaded();
 
@@ -135,54 +138,36 @@ public class CompressedFixedSizeComplexesIndexedSupplier implements Supplier<Ind
     ResourceHolder<ByteBuffer> holder;
     ByteBuffer buffer;
 
+    int maxObjectsInBuffer = getMaxObjectsInBuffer(objectSize);
+
     @Override
-    public int size()
+    public Class<?> getClazz()
     {
-      return totalSize;
+      return serde.getObjectStrategy().getClazz();
     }
 
     @Override
-    public Object get(int index)
+    public String getTypeName()
     {
-      final int bufferNum = index / objectSize;
-      final int bufferOffset = index % objectSize;
+      return serde.getTypeName();
+    }
+
+    @Override
+    public Object getRowValue(int index)
+    {
+      final int bufferNum = index / maxObjectsInBuffer;
+      final int bufferOffset = index % maxObjectsInBuffer;
 
       if (bufferNum != currIndex) {
         loadBuffer(bufferNum);
       }
 
-      return buffer.get(buffer.position() + bufferOffset);
-    }
-
-    @Override
-    public void fill(int index, Object[] toFill)
-    {
-      if (totalSize - index < toFill.length) {
-        throw new IndexOutOfBoundsException(
-            String.format(
-                "Cannot fill array of size[%,d] at index[%,d].  Max size[%,d]", toFill.length, index, totalSize
-            )
-        );
+      final int pos = buffer.position() + bufferOffset * objectSize;
+      final byte[] buf = new byte[objectSize];
+      for(int idx = 0; idx < objectSize; idx++) {
+        buf[idx] = buffer.get(pos + idx);
       }
-
-      int bufferNum = index / objectSize;
-      int bufferIndex = index % objectSize;
-
-      int leftToFill = toFill.length;
-      while (leftToFill > 0) {
-        if (bufferNum != currIndex) {
-          loadBuffer(bufferNum);
-        }
-
-        buffer.mark();
-        buffer.position(buffer.position() + bufferIndex);
-        final int numToGet = Math.min(buffer.remaining(), leftToFill);
-        buffer.get(toFill, toFill.length - leftToFill, numToGet);
-        buffer.reset();
-        leftToFill -= numToGet;
-        ++bufferNum;
-        bufferIndex = 0;
-      }
+      return serde.fromBytes(buf, 0, objectSize);
     }
 
     protected void loadBuffer(int bufferNum)
@@ -198,7 +183,7 @@ public class CompressedFixedSizeComplexesIndexedSupplier implements Supplier<Ind
     {
       return "CompressedFixedSizeComplexesIndexedSupplier_Anonymous{" +
           "currIndex=" + currIndex +
-          ", objSize=" + objectSize +
+          ", sizePer=" + getMaxObjectsInBuffer(objectSize) +
           ", numChunks=" + singleThreadedLongBuffers.size() +
           ", totalSize=" + totalSize +
           '}';

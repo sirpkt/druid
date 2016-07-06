@@ -55,8 +55,7 @@ public class CompressedFixedSizeObjectSupplierSerializer
             CompressedByteBufferObjectStrategy.getBufferForOrder(
                 order,
                 compression,
-                // it's tricky - assumes that object size is always the same because it is fixed size metric
-                serde.getMetricSize()
+                CompressedFixedSizeComplexesIndexedSupplier.getMaxObjectsInBuffer(serde.getMetricSize())
             )
         ),
         compression,

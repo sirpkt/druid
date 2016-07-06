@@ -25,6 +25,7 @@ import com.google.common.io.OutputSupplier;
 import com.metamx.common.IAE;
 import com.metamx.common.ISE;
 import io.druid.common.utils.SerializerUtils;
+import io.druid.segment.column.ComplexColumn;
 import io.druid.segment.data.*;
 import io.druid.segment.serde.ComplexMetricSerde;
 import io.druid.segment.serde.ComplexMetrics;
@@ -54,6 +55,13 @@ public class MetricHolder
   {
     MetricHolder retVal = new MetricHolder(name, typeName);
     retVal.complexType = column;
+    return retVal;
+  }
+
+  public static MetricHolder fixedSizeComplexMetric(String name, String typeName, CompressedFixedSizeComplexesIndexedSupplier column)
+  {
+    MetricHolder retVal = new MetricHolder(name, typeName);
+    retVal.fixedSizeComplexType = column;
     return retVal;
   }
 
@@ -116,6 +124,8 @@ public class MetricHolder
       case COMPLEX:
         if (holder.complexType instanceof GenericIndexed) {
           ((GenericIndexed) holder.complexType).writeToChannel(out);
+        } else if(holder.fixedSizeComplexType instanceof CompressedFixedSizeComplexesIndexedSupplier) {
+          holder.fixedSizeComplexType.writeToChannel(out);
         } else {
           throw new IAE("Cannot serialize out MetricHolder for complex type that is not a GenericIndexed");
         }
@@ -155,8 +165,11 @@ public class MetricHolder
           if (serdeForType == null) {
             throw new ISE("Unknown type[%s], cannot load.", holder.getTypeName());
           }
-
-          holder.complexType = GenericIndexed.read(buf, serdeForType.getObjectStrategy());
+          if (serdeForType.getMetricSize() == null) {
+            holder.complexType = GenericIndexed.read(buf, serdeForType.getObjectStrategy());
+          } else {
+            holder.fixedSizeComplexType = CompressedFixedSizeComplexesIndexedSupplier.fromByteBuffer(buf, ByteOrder.nativeOrder(), serdeForType);
+          }
         }
         break;
     }
@@ -187,6 +200,7 @@ public class MetricHolder
 
   CompressedLongsIndexedSupplier longType = null;
   CompressedFloatsIndexedSupplier floatType = null;
+  CompressedFixedSizeComplexesIndexedSupplier fixedSizeComplexType = null;
   Indexed complexType = null;
 
   private MetricHolder(
@@ -230,6 +244,12 @@ public class MetricHolder
   {
     assertType(MetricType.COMPLEX);
     return complexType;
+  }
+
+  public ComplexColumn getFixedSizeComplexType()
+  {
+    assertType(MetricType.COMPLEX);
+    return fixedSizeComplexType.get();
   }
 
   public MetricHolder convertByteOrder(ByteOrder order)
