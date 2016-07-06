@@ -116,6 +116,10 @@ public class CompressedFixedSizeObjectSupplierSerializer
   {
     close();
     try (OutputStream out = consolidatedOut.getOutput()) {
+      out.write(CompressedFloatsIndexedSupplier.version);
+      out.write(Ints.toByteArray(numInserted));
+      out.write(Ints.toByteArray(serde.getMetricSize()));
+      out.write(new byte[]{compression.getId()});
       ByteStreams.copy(flattener.combineStreams(), out);
     }
   }

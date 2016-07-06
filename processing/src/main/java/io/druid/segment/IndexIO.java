@@ -54,31 +54,8 @@ import io.druid.segment.column.ColumnBuilder;
 import io.druid.segment.column.ColumnConfig;
 import io.druid.segment.column.ColumnDescriptor;
 import io.druid.segment.column.ValueType;
-import io.druid.segment.data.ArrayIndexed;
-import io.druid.segment.data.BitmapSerde;
-import io.druid.segment.data.BitmapSerdeFactory;
-import io.druid.segment.data.ByteBufferSerializer;
-import io.druid.segment.data.CompressedLongsIndexedSupplier;
-import io.druid.segment.data.CompressedObjectStrategy;
-import io.druid.segment.data.CompressedVSizeIntsIndexedSupplier;
-import io.druid.segment.data.GenericIndexed;
-import io.druid.segment.data.Indexed;
-import io.druid.segment.data.IndexedInts;
-import io.druid.segment.data.IndexedIterable;
-import io.druid.segment.data.IndexedMultivalue;
-import io.druid.segment.data.IndexedRTree;
-import io.druid.segment.data.VSizeIndexed;
-import io.druid.segment.data.VSizeIndexedInts;
-import io.druid.segment.serde.BitmapIndexColumnPartSupplier;
-import io.druid.segment.serde.ComplexColumnPartSerde;
-import io.druid.segment.serde.ComplexColumnPartSupplier;
-import io.druid.segment.serde.DictionaryEncodedColumnPartSerde;
-import io.druid.segment.serde.DictionaryEncodedColumnSupplier;
-import io.druid.segment.serde.FloatGenericColumnPartSerde;
-import io.druid.segment.serde.FloatGenericColumnSupplier;
-import io.druid.segment.serde.LongGenericColumnPartSerde;
-import io.druid.segment.serde.LongGenericColumnSupplier;
-import io.druid.segment.serde.SpatialIndexColumnPartSupplier;
+import io.druid.segment.data.*;
+import io.druid.segment.serde.*;
 import org.joda.time.Interval;
 
 import java.io.ByteArrayOutputStream;
@@ -775,17 +752,27 @@ public class IndexIO
               );
               break;
             case COMPLEX:
-              if (!(holder.complexType instanceof GenericIndexed)) {
-                throw new ISE("Serialized complex types must be GenericIndexed objects.");
+              if (!((holder.complexType != null && holder.complexType instanceof GenericIndexed)
+                  || (holder.fixedSizeComplexType != null && holder.fixedSizeComplexType instanceof CompressedFixedSizeComplexesIndexedSupplier))) {
+                throw new ISE("Serialized complex types must be GenericIndexed or CompressedFixedSizeComplexesIndexedSupplier objects.");
               }
-              final GenericIndexed column = (GenericIndexed) holder.complexType;
               final String complexType = holder.getTypeName();
               builder.setValueType(ValueType.COMPLEX);
-              builder.addSerde(
-                  ComplexColumnPartSerde.legacySerializerBuilder()
-                                        .withTypeName(complexType)
-                                        .withDelegate(column).build()
-              );
+              if (holder.complexType != null) {
+                final GenericIndexed column = (GenericIndexed) holder.complexType;
+                builder.addSerde(
+                    ComplexColumnPartSerde.legacySerializerBuilder()
+                        .withTypeName(complexType)
+                        .withDelegate(column).build()
+                );
+              } else {
+                final CompressedFixedSizeComplexesIndexedSupplier column = holder.fixedSizeComplexType;
+                builder.addSerde(
+                    ComplexColumnPartSerde.legacySerializerBuilder()
+                        .withTypeName(complexType)
+                        .withDelegate(column).build()
+                );
+              }
               break;
             default:
               throw new ISE("Unknown type[%s]", holder.getType());
@@ -957,14 +944,18 @@ public class IndexIO
                   .build()
           );
         } else if (metricHolder.getType() == MetricHolder.MetricType.COMPLEX) {
+          ComplexMetricSerde serde = ComplexMetrics.getSerdeForType(metricHolder.getTypeName());
           columns.put(
               metric,
               new ColumnBuilder()
                   .setType(ValueType.COMPLEX)
                   .setComplexColumn(
-                      new ComplexColumnPartSupplier(
-                          metricHolder.getTypeName(), (GenericIndexed) metricHolder.complexType
-                      )
+                      (serde.getMetricSize() == null)
+                          ? new ComplexColumnPartSupplier(
+                              metricHolder.getTypeName(),
+                              (GenericIndexed) metricHolder.complexType
+                          )
+                          : metricHolder.fixedSizeComplexType
                   )
                   .build()
           );

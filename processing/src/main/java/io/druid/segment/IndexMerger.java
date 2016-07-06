@@ -78,9 +78,7 @@ import io.druid.segment.data.TmpFileIOPeon;
 import io.druid.segment.data.VSizeIndexedWriter;
 import io.druid.segment.incremental.IncrementalIndex;
 import io.druid.segment.incremental.IncrementalIndexAdapter;
-import io.druid.segment.serde.ComplexMetricColumnSerializer;
-import io.druid.segment.serde.ComplexMetricSerde;
-import io.druid.segment.serde.ComplexMetrics;
+import io.druid.segment.serde.*;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
@@ -794,7 +792,11 @@ public class IndexMerger
               throw new ISE("Unknown type[%s]", typeName);
             }
 
-            metWriters.add(new ComplexMetricColumnSerializer(metric, v8OutDir, ioPeon, serde));
+            if (serde.getMetricSize() == null) {
+              metWriters.add(new ComplexMetricColumnSerializer(metric, v8OutDir, ioPeon, serde));
+            } else {
+              metWriters.add(new FixedSizeComplexMetricColumnSerializer(metric, v8OutDir, ioPeon, serde));
+            }
             break;
           default:
             throw new ISE("Unknown type[%s]", type);

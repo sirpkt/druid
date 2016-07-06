@@ -21,6 +21,7 @@ package io.druid.segment.serde;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import io.druid.segment.GenericColumnSerializer;
 import io.druid.segment.column.ColumnBuilder;
@@ -132,7 +133,7 @@ public class ComplexColumnPartSerde implements ColumnPartSerde
   {
     private String typeName = null;
     private ByteOrder byteOrder = null;
-    private GenericIndexed delegate = null;
+    private Object delegate = null;
 
     public LegacySerializerBuilder withTypeName(final String typeName)
     {
@@ -146,27 +147,46 @@ public class ComplexColumnPartSerde implements ColumnPartSerde
       return this;
     }
 
-    public LegacySerializerBuilder withDelegate(final GenericIndexed delegate)
+    public LegacySerializerBuilder withDelegate(final Object delegate)
     {
+      Preconditions.checkArgument(delegate instanceof GenericIndexed || delegate instanceof CompressedFixedSizeComplexesIndexedSupplier,
+          "delegate should be GenericIndexed or CompressedFixedSizeComplexesIndexedSupplier");
       this.delegate = delegate;
       return this;
     }
 
     public ComplexColumnPartSerde build()
     {
+      final GenericIndexed genericIndexed;
+      final CompressedFixedSizeComplexesIndexedSupplier compressedFixedSizeComplexesIndexedSupplier;
+
+      if (delegate instanceof GenericIndexed) {
+        genericIndexed = (GenericIndexed)delegate;
+        compressedFixedSizeComplexesIndexedSupplier = null;
+      } else {
+        genericIndexed = null;
+        compressedFixedSizeComplexesIndexedSupplier = (CompressedFixedSizeComplexesIndexedSupplier)delegate;
+      }
+
       return new ComplexColumnPartSerde(
           typeName, byteOrder, new Serializer()
       {
         @Override
         public long numBytes()
         {
-          return delegate.getSerializedSize();
+          if (genericIndexed != null)
+            return genericIndexed.getSerializedSize();
+          else
+            return compressedFixedSizeComplexesIndexedSupplier.getSerializedSize();
         }
 
         @Override
         public void write(WritableByteChannel channel) throws IOException
         {
-          delegate.writeToChannel(channel);
+          if (genericIndexed != null)
+            genericIndexed.writeToChannel(channel);
+          else
+            compressedFixedSizeComplexesIndexedSupplier.writeToChannel(channel);
         }
       }
       );
