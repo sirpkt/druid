@@ -97,7 +97,7 @@ public class CompressedFixedSizeComplexesIndexedSupplier implements Supplier<Com
   {
     return new CompressedFixedSizeComplexesIndexedSupplier(
         totalSize,
-        GenericIndexed.fromIterable(baseBuffers, CompressedByteBufferObjectStrategy.getBufferForOrder(order, compression, objectSize)),
+        GenericIndexed.fromIterable(baseBuffers, CompressedByteBufferObjectStrategy.getBufferForOrder(order, compression, CompressedPools.BUFFER_SIZE)),
         compression,
         serde
     );
@@ -114,13 +114,13 @@ public class CompressedFixedSizeComplexesIndexedSupplier implements Supplier<Com
 
     if (versionFromBuffer == version || versionFromBuffer == LZF_VERSION) {
       final int totalSize = buffer.getInt();
-      final int objectsize = buffer.getInt();
+      final int objectSize = buffer.getInt();
       final CompressedObjectStrategy.CompressionStrategy compression = (versionFromBuffer == LZF_VERSION)
           ? CompressedObjectStrategy.CompressionStrategy.LZF
           : CompressedObjectStrategy.CompressionStrategy.forId(buffer.get());
       return new CompressedFixedSizeComplexesIndexedSupplier(
           totalSize,
-          GenericIndexed.read(buffer, CompressedByteBufferObjectStrategy.getBufferForOrder(order, compression, objectsize)),
+          GenericIndexed.read(buffer, CompressedByteBufferObjectStrategy.getBufferForOrder(order, compression, CompressedPools.BUFFER_SIZE)),
           compression,
           serde
       );

@@ -75,8 +75,6 @@ public class FixedSizeComplexMetricColumnSerializer implements MetricColumnSeria
   @Override
   public void close() throws IOException
   {
-    writer.close();
-
     final File outFile = IndexIO.makeMetricFile(outDir, metricName, IndexIO.BYTE_ORDER);
     outFile.delete();
     MetricHolder.writeFixedSizeComplexMetric(
