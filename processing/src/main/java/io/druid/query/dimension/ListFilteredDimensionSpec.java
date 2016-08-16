@@ -50,6 +50,7 @@ public class ListFilteredDimensionSpec extends BaseFilteredDimensionSpec
     super(delegate);
 
     Preconditions.checkArgument(values != null && values.size() > 0, "values list must be non-empty");
+    Preconditions.checkArgument(delegate.getExtractionFn().arity() == 1, "delegate should have only one dimension");
     this.values = values;
 
     this.isWhitelist = isWhitelist == null ? true : isWhitelist.booleanValue();

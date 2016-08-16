@@ -478,7 +478,7 @@ public class RowBasedGrouperHelper
         DimensionSpec dimensionSpec
     )
     {
-      final String dimension = dimensionSpec.getDimension();
+      final String dimension = dimensionSpec.getDimensions().get(0);
       final ExtractionFn extractionFn = dimensionSpec.getExtractionFn();
 
       return new DimensionSelector()

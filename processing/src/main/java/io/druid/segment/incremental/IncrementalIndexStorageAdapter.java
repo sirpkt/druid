@@ -22,7 +22,11 @@ package io.druid.segment.incremental;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import com.metamx.common.guava.Sequence;
 import com.metamx.common.guava.Sequences;
@@ -58,11 +62,7 @@ import org.joda.time.Interval;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  */
@@ -436,7 +436,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                     }
                   };
                 } else {
-                  if (extractionFn == null || extractionFn.numberOfDimensionInputs() != dimensions.size())
+                  if (extractionFn == null || (extractionFn.arity() > 0  && extractionFn.arity() != dimensions.size()))
                   {
                     throw new UnsupportedOperationException(
                         "number of dimensions between extractionFn() and input dimensions mismatch!"
@@ -465,7 +465,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                   return new DimensionSelector()
                   {
                     boolean valMade = false;
-                    EntryHolder current = null;
+                    EntryHolder current = new EntryHolder();
                     List<Integer> vals = null;
                     List<String> dimsExtractValues = Lists.newArrayList();
                     Map<String, Integer> dimsExtractLookup = Maps.newHashMap();
@@ -534,7 +534,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
 
                     private synchronized void fillValues()
                     {
-                      if (!valMade || current != currEntry)
+                      if (!valMade || current.getKey() == null || !current.getKey().equals(currEntry.getKey()))
                       {
                         final int[][] dims = currEntry.getKey().getDims();
                         List<Set<Comparable>> dimValues = Lists.newArrayListWithCapacity(dimensions.size());
@@ -573,7 +573,6 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                         Set<List<Comparable>> args = Sets.cartesianProduct(dimValues);
                         List<Integer> valsTmp = Lists.newArrayListWithCapacity(args.size());
 
-                        final List<String> dimsExtractValues = Lists.newArrayListWithCapacity(args.size());
                         for (List<Comparable> arg: args)
                         {
                           String fnReturn = extractionFn.apply(arg);
@@ -590,7 +589,7 @@ public class IncrementalIndexStorageAdapter implements StorageAdapter
                         vals = valsTmp == null ? Collections.EMPTY_LIST : valsTmp;
 
                         valMade = true;
-                        current = currEntry;
+                        current.set(currEntry.get());
                       }
                     }
                   };

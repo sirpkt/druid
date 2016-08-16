@@ -29,8 +29,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.metamx.collections.bitmap.ImmutableBitmap;
-import com.metamx.common.IAE;
-import com.metamx.common.UOE;
 import com.metamx.common.guava.CloseQuietly;
 import com.metamx.common.guava.Sequence;
 import com.metamx.common.guava.Sequences;
@@ -579,7 +577,7 @@ public class QueryableIndexStorageAdapter implements StorageAdapter
                         }
                       } else {
                         // multiple dimensions in dimension spec.
-                        if (extractionFn == null || dimensions.size() != extractionFn.numberOfDimensionInputs())
+                        if (extractionFn == null || (extractionFn.arity() > 0 && dimensions.size() != extractionFn.arity()))
                         {
                           throw new UnsupportedOperationException(
                               "number of dimensions between extractionFn() and input dimensions mismatch!"

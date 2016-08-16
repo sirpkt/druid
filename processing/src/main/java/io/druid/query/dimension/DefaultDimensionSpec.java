@@ -22,6 +22,7 @@ package io.druid.query.dimension;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -69,6 +70,7 @@ public class DefaultDimensionSpec implements DimensionSpec
       @JsonProperty("outputName") String outputName
   )
   {
+    Preconditions.checkArgument(dimensions.size() == 1, "Dimensinos should have only one dimension");
     this.dimensions = dimensions;
 
     // Do null check for legacy backwards compatibility, callers should be setting the value.
