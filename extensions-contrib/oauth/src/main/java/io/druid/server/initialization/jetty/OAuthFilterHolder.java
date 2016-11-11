@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.metamx.http.client.HttpClient;
 import io.druid.guice.annotations.Global;
+import io.druid.server.security.OAuth.OAuthConfig;
 import io.druid.server.security.OAuth.OAuthFilter;
 
 import javax.servlet.DispatcherType;
@@ -31,21 +32,23 @@ import java.util.Map;
 
 public class OAuthFilterHolder implements ServletFilterHolder
 {
-  public static final String OVERLORD_QUERY_REQUEST_PATH = "/druid/indexer/v1/*";
   private final HttpClient httpClient;
+  private final OAuthConfig oAuthConfig;
 
   @Inject
   public OAuthFilterHolder(
-      @Global HttpClient httpClient
+      @Global HttpClient httpClient,
+      OAuthConfig oAuthConfig
   )
   {
     this.httpClient = httpClient;
+    this.oAuthConfig = oAuthConfig;
   }
 
   @Override
   public Filter getFilter()
   {
-    return new OAuthFilter(httpClient);
+    return new OAuthFilter(httpClient, oAuthConfig.getValidateURLFormat());
   }
 
   @Override
@@ -63,7 +66,7 @@ public class OAuthFilterHolder implements ServletFilterHolder
   @Override
   public String getPath()
   {
-    return OVERLORD_QUERY_REQUEST_PATH;
+    return oAuthConfig.getPath();
   }
 
   @Override

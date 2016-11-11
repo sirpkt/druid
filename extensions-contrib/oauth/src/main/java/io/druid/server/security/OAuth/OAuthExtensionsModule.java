@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.Module;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Binder;
 import com.google.inject.multibindings.Multibinder;
+import io.druid.guice.JsonConfigProvider;
 import io.druid.initialization.DruidModule;
 import io.druid.server.initialization.jetty.OAuthFilterHolder;
 import io.druid.server.initialization.jetty.ServletFilterHolder;
@@ -39,6 +40,7 @@ public class OAuthExtensionsModule implements DruidModule
   @Override
   public void configure(Binder binder)
   {
+    JsonConfigProvider.bind(binder, OAuthConfig.OAUTH_CONFIG_PATH, OAuthConfig.class);
 
     Multibinder.newSetBinder(binder, ServletFilterHolder.class)
         .addBinding()

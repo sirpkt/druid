@@ -33,13 +33,12 @@ import java.util.Enumeration;
 
 public class OAuthFilter implements Filter
 {
-  private static String checkURLFormat="http://emn-g02-01:8180/oauth/check_token?token=%s";
-
   private volatile FilterConfig config;
   private final OAuthTokenChecker tokenChecker;
 
   public OAuthFilter(
-      HttpClient httpClient
+      HttpClient httpClient,
+      String checkURLFormat
   )
   {
     this.tokenChecker = new OAuthTokenChecker(
